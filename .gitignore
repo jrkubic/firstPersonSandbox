@@ -1,0 +1,11 @@
+# Godot 4+ specific
+.godot/
+/android/
+
+# Reference repo (third-party, not part of this project)
+3rd-person-controller-full-gamepad-support/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
