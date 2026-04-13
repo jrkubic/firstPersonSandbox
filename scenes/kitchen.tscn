@@ -51,6 +51,16 @@ size = Vector3(0.2, 6, 12)
 [sub_resource type="BoxShape3D" id="BoxShape3D_wallEW"]
 size = Vector3(0.2, 6, 12)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_testcube"]
+albedo_color = Color(1, 0.2, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_testcube"]
+material = SubResource("StandardMaterial3D_testcube")
+size = Vector3(0.4, 0.4, 0.4)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_testcube"]
+size = Vector3(0.4, 0.4, 0.4)
+
 [node name="Kitchen" type="Node3D" unique_id=1110490797]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1701750613]
@@ -113,5 +123,15 @@ shape = SubResource("BoxShape3D_wallEW")
 
 [node name="Player" parent="." unique_id=1854020303 instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 4)
+
+[node name="TestCube" type="RigidBody3D" parent="." groups=["grabbable"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+mass = 1.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestCube"]
+shape = SubResource("BoxShape3D_testcube")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestCube"]
+mesh = SubResource("BoxMesh_testcube")
 
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]

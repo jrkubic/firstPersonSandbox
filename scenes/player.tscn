@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://bixbe2raf18an"]
 
 [ext_resource type="Script" uid="uid://bgjbhst6ro515" path="res://scripts/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/systems/grab_controller.gd" id="2_grab"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
@@ -12,21 +13,28 @@ albedo_color = Color(0.6313726, 0.7411765, 1, 1)
 material = SubResource("StandardMaterial3D_player")
 radius = 0.4
 
-[node name="Player" type="CharacterBody3D"]
+[node name="Player" type="CharacterBody3D" unique_id=144554841]
 script = ExtResource("1_player")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=259202456]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_player")
 
-[node name="Skin" type="MeshInstance3D" parent="."]
+[node name="Skin" type="MeshInstance3D" parent="." unique_id=123480217]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-mesh = SubResource("CapsuleMesh_player")
 cast_shadow = 3
-visible = false
+mesh = SubResource("CapsuleMesh_player")
 
-[node name="Head" type="Node3D" parent="."]
+[node name="Head" type="Node3D" parent="." unique_id=1189047595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 
-[node name="Camera3D" type="Camera3D" parent="Head"]
+[node name="Camera3D" type="Camera3D" parent="Head" unique_id=390421732]
 fov = 90.0
+
+[node name="HoldTarget" type="Node3D" parent="Head/Camera3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, -0.35, -0.6)
+
+[node name="GrabController" type="Node3D" parent="Head/Camera3D"]
+script = ExtResource("2_grab")
+hold_target_path = NodePath("../HoldTarget")
+camera_path = NodePath("..")

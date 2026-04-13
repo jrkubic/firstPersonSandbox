@@ -15,6 +15,7 @@ extends CharacterBody3D
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	call_deferred("_register_debug_watches")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -56,3 +57,11 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, friction * control * delta)
 
 	move_and_slide()
+
+
+func _register_debug_watches() -> void:
+	var overlay: Node = get_tree().get_first_node_in_group("debug_overlay")
+	if overlay == null:
+		return
+	var grab: GrabController = $Head/Camera3D/GrabController
+	overlay.watch("held", Callable(grab, "held_body_name"))
