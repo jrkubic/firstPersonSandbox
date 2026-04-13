@@ -22,6 +22,7 @@ shape = SubResource("CapsuleShape3D_player")
 
 [node name="Skin" type="MeshInstance3D" parent="." unique_id=123480217]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+visible = false
 cast_shadow = 3
 mesh = SubResource("CapsuleMesh_player")
 
