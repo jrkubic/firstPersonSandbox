@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-@export_file("*.tscn") var game_scene: String = "res://scenes/world.tscn"
+@export_file("*.tscn") var game_scene: String = "res://scenes/kitchen.tscn"
 
 @onready var start_button: Button = $Control/MarginContainer/VBoxContainer/StartButton
 @onready var quit_button: Button = $Control/MarginContainer/VBoxContainer/QuitButton
