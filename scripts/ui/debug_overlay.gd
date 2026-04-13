@@ -18,6 +18,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	if _watched.is_empty():
+		label.text = "(debug — no watches)"
+		return
 	var lines: Array[String] = []
 	for key in _watched.keys():
 		var getter: Callable = _watched[key]
