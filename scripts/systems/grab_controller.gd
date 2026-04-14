@@ -77,6 +77,7 @@ func _try_grab() -> void:
 	_cached_gravity_scale = collider.gravity_scale
 	_held_body = collider
 	_held_body.gravity_scale = 0.0
+	_held_body.add_to_group("held")
 	if _exclude_body:
 		_held_body.add_collision_exception_with(_exclude_body)
 
@@ -84,6 +85,7 @@ func _try_grab() -> void:
 func _release() -> void:
 	if is_instance_valid(_held_body):
 		_held_body.gravity_scale = _cached_gravity_scale
+		_held_body.remove_from_group("held")
 		if _exclude_body:
 			_held_body.remove_collision_exception_with(_exclude_body)
 	_held_body = null

@@ -22,6 +22,8 @@ func _physics_process(_delta: float) -> void:
 		if not is_instance_valid(plate):
 			_plates_inside.erase(plate)
 			continue
+		if plate.is_in_group("held"):
+			continue
 		if _order_system.check_delivery(plate):
 			_deliver(plate)
 
