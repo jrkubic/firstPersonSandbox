@@ -5,6 +5,9 @@
 [ext_resource type="PackedScene" path="res://scenes/items/egg.tscn" id="3_egg"]
 [ext_resource type="PackedScene" path="res://scenes/items/pan.tscn" id="4_pan"]
 [ext_resource type="PackedScene" path="res://scenes/items/plate.tscn" id="5_plate"]
+[ext_resource type="Script" path="res://scripts/systems/order_system.gd" id="6_order_system"]
+[ext_resource type="Script" path="res://scripts/systems/delivery_zone.gd" id="7_delivery_zone"]
+[ext_resource type="Script" path="res://scripts/ui/order_board.gd" id="8_order_board"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -100,6 +103,9 @@ size = Vector3(2, 1.2, 0.1)
 [sub_resource type="BoxMesh" id="BoxMesh_order_board"]
 material = SubResource("StandardMaterial3D_order_board")
 size = Vector3(2, 1.2, 0.1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_delivery_zone"]
+size = Vector3(1.8, 0.8, 0.6)
 
 [node name="Kitchen" type="Node3D" unique_id=1110490797]
 
@@ -197,6 +203,9 @@ shape = SubResource("BoxShape3D_plate_rack")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_plate_rack")
 
+[node name="OrderSystem" type="Node" parent="."]
+script = ExtResource("6_order_system")
+
 [node name="Pass" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
 
@@ -207,6 +216,14 @@ shape = SubResource("BoxShape3D_pass")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Pass"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_pass")
+
+[node name="DeliveryZone" type="Area3D" parent="Pass"]
+script = ExtResource("7_delivery_zone")
+order_system_path = NodePath("../../OrderSystem")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Pass/DeliveryZone"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+shape = SubResource("BoxShape3D_delivery_zone")
 
 [node name="OrderBoard" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -5.8)
@@ -225,6 +242,8 @@ font_size = 64
 horizontal_alignment = 1
 vertical_alignment = 1
 modulate = Color(1, 1, 1, 1)
+script = ExtResource("8_order_board")
+order_system_path = NodePath("../../OrderSystem")
 
 [node name="Egg" parent="." instance=ExtResource("3_egg")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.2, 0)

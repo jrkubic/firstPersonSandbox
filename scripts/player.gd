@@ -77,3 +77,6 @@ func _register_debug_watches() -> void:
 	overlay.watch("plate.contents", func() -> String:
 		var pl: Plate = get_tree().get_first_node_in_group("plate") as Plate
 		return pl.container.contents_text() if pl else "-")
+	var orders: OrderSystem = get_node_or_null("/root/Kitchen/OrderSystem") as OrderSystem
+	if orders:
+		overlay.watch("order", Callable(orders, "current_order_text"))
