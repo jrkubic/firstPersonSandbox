@@ -27,12 +27,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			deg_to_rad(min_pitch),
 			deg_to_rad(max_pitch),
 		)
-	elif event.is_action_pressed("toggle_mouse_captured"):
-		Input.mouse_mode = (
-			Input.MOUSE_MODE_VISIBLE
-			if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-			else Input.MOUSE_MODE_CAPTURED
-		)
 
 
 func _physics_process(delta: float) -> void:
