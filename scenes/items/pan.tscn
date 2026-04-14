@@ -1,12 +1,12 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene format=3 uid="uid://de3ay5ratre0w"]
 
-[ext_resource type="Script" path="res://scripts/items/pan.gd" id="1_pan"]
-[ext_resource type="Script" path="res://scripts/systems/stove_detector.gd" id="2_stove_detector"]
-[ext_resource type="Script" path="res://scripts/systems/cook_slot.gd" id="3_cook_slot"]
+[ext_resource type="Script" uid="uid://mm1wq42af4l5" path="res://scripts/items/pan.gd" id="1_pan"]
+[ext_resource type="Script" uid="uid://bx1fkp2wf4wua" path="res://scripts/systems/stove_detector.gd" id="2_stove_detector"]
+[ext_resource type="Script" uid="uid://cwht0cdwfmcdq" path="res://scripts/systems/cook_slot.gd" id="3_cook_slot"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_pan"]
-radius = 0.25
 height = 0.08
+radius = 0.25
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pan"]
 albedo_color = Color(0.15, 0.15, 0.15, 1)
@@ -17,33 +17,51 @@ top_radius = 0.25
 bottom_radius = 0.25
 height = 0.08
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_handle"]
+height = 0.4
+radius = 0.02
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_handle"]
+material = SubResource("StandardMaterial3D_pan")
+top_radius = 0.02
+bottom_radius = 0.02
+height = 0.4
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_stove_detector"]
 size = Vector3(0.45, 0.1, 0.45)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_cook_slot"]
 size = Vector3(0.4, 0.15, 0.4)
 
-[node name="Pan" type="RigidBody3D"]
+[node name="Pan" type="RigidBody3D" unique_id=841482535]
 mass = 0.8
 script = ExtResource("1_pan")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=159918469]
 shape = SubResource("CylinderShape3D_pan")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=879553961]
 mesh = SubResource("CylinderMesh_pan")
 
-[node name="StoveDetector" type="Area3D" parent="."]
+[node name="HandleCollision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0.45)
+shape = SubResource("CylinderShape3D_handle")
+
+[node name="HandleMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0.45)
+mesh = SubResource("CylinderMesh_handle")
+
+[node name="StoveDetector" type="Area3D" parent="." unique_id=1489447160]
 script = ExtResource("2_stove_detector")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StoveDetector"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StoveDetector" unique_id=1344296087]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 shape = SubResource("BoxShape3D_stove_detector")
 
-[node name="CookSlot" type="Area3D" parent="."]
+[node name="CookSlot" type="Area3D" parent="." unique_id=1311410877]
 script = ExtResource("3_cook_slot")
 pan_path = NodePath("..")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="CookSlot"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CookSlot" unique_id=1741521346]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
 shape = SubResource("BoxShape3D_cook_slot")
