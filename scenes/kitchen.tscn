@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://bixbe2raf18an" path="res://scenes/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_overlay.tscn" id="2_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/items/egg.tscn" id="3_egg"]
+[ext_resource type="PackedScene" path="res://scenes/items/pan.tscn" id="4_pan"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -173,7 +174,7 @@ shape = SubResource("BoxShape3D_counter_stove")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_counter")
 
-[node name="Stove" type="StaticBody3D" parent="."]
+[node name="Stove" type="StaticBody3D" parent="." groups=["stove"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Stove"]
@@ -226,5 +227,8 @@ modulate = Color(1, 1, 1, 1)
 
 [node name="Egg" parent="." instance=ExtResource("3_egg")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.2, 0)
+
+[node name="Pan" parent="." instance=ExtResource("4_pan")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
 
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]

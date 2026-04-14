@@ -71,3 +71,6 @@ func _register_debug_watches() -> void:
 	overlay.watch("egg.progress", func() -> String:
 		var f: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
 		return "%.2f" % f.cook_progress if f else "-")
+	overlay.watch("pan.on_stove", func() -> String:
+		var p: Pan = get_tree().get_first_node_in_group("pan") as Pan
+		return p.on_stove_text() if p else "-")
