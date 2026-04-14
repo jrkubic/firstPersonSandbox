@@ -1097,4 +1097,5 @@ Captured during execution — do NOT address in the slice. Revisit after Task 12
 
 - **Crouch movement.** Floor-level items like the egg are awkward to reach because you can't lower the camera. Add `crouch` action + smooth `Head` Y-offset lerp while held. Pairs well with collision shape resizing during crouch.
 - **Grab aim forgiveness.** Small items (egg radius 0.07) are fiddly to raycast-click. Options: bump `GrabController.grab_range` from 2.5 to 3.5+, or upgrade the ray to a short sphere cast (`PhysicsShapeQueryParameters3D`) for a more forgiving aim cone.
+- **Dedicated physics layers.** Detection Area3Ds (StoveDetector, CookSlot, FoodContainer, DeliveryZone) currently use default layer 1 / mask 1, so broadphase considers every body in the scene and GDScript filters by group. Fine for the slice, but once there are multiple cookware types and many food items, move each detection role onto its own physics layer and narrow masks accordingly. Keep group checks as a safety net.
 
