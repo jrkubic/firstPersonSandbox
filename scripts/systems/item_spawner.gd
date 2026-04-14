@@ -9,7 +9,7 @@ var _last_spawned: Node = null
 
 func _ready() -> void:
 	if spawn_on_ready:
-		spawn()
+		call_deferred("spawn")
 
 
 func spawn() -> Node:
