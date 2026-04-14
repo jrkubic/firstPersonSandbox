@@ -13,6 +13,7 @@ func _ready() -> void:
 func _on_delivered() -> void:
 	var plate_spawner: ItemSpawner = get_node(plate_spawner_path)
 	plate_spawner.spawn()
+	await get_tree().process_frame
 	var egg_spawner: ItemSpawner = get_node(egg_spawner_path)
 	if get_tree().get_nodes_in_group("food").is_empty():
 		egg_spawner.spawn()
