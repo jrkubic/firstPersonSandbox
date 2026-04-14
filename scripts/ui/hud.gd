@@ -46,7 +46,7 @@ func _refresh_delivered_label() -> void:
 func _refresh_timer_label() -> void:
 	if _kitchen_loop == null:
 		return
-	var t: float = max(0.0, _kitchen_loop.time_remaining)
+	var t: float = _kitchen_loop.elapsed_time
 	var minutes: int = int(t) / 60
 	var seconds: int = int(t) % 60
 	timer_label.text = "%d:%02d" % [minutes, seconds]

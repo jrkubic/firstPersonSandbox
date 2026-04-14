@@ -16,7 +16,6 @@ func _ready() -> void:
 	visible = false
 	var loop: KitchenLoop = get_node(kitchen_loop_path)
 	loop.game_won.connect(_on_game_won)
-	loop.game_lost.connect(_on_game_lost)
 	play_again_button.pressed.connect(_on_play_again_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
@@ -26,13 +25,6 @@ func _on_game_won(elapsed_time: float, stars: int) -> void:
 	title_label.text = "Service Complete"
 	stars_label.text = _stars_text(stars)
 	time_label.text = "Time: %s" % _format_time(elapsed_time)
-	_show()
-
-
-func _on_game_lost() -> void:
-	title_label.text = "Time's Up"
-	stars_label.text = ""
-	time_label.text = ""
 	_show()
 
 
