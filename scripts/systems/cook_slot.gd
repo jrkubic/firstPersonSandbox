@@ -18,8 +18,11 @@ func _physics_process(delta: float) -> void:
 	if not _pan.is_on_stove():
 		return
 	for food in _foods:
-		if is_instance_valid(food):
-			food.tick_cook(delta)
+		if not is_instance_valid(food):
+			continue
+		if food.is_in_group("held"):
+			continue
+		food.tick_cook(delta)
 
 
 func _on_body_entered(body: Node) -> void:
