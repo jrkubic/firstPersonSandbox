@@ -6,7 +6,8 @@ extends Node3D
 @export var throw_speed: float = 22.0
 @export var pull_strength: float = 25.0
 @export var max_pull_speed: float = 20.0
-@export var angular_damping_per_second: float = 10.0
+@export var orientation_stiffness: float = 25.0
+@export var max_angular_speed: float = 20.0
 
 @export_node_path("Node3D") var hold_target_path: NodePath
 @export_node_path("Camera3D") var camera_path: NodePath
@@ -44,7 +45,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_throw()
 
 
-func _physics_process(delta: float) -> void:
+func _physics_process(_delta: float) -> void:
 	if not is_instance_valid(_held_body):
 		_held_body = null
 		return
@@ -57,7 +58,19 @@ func _physics_process(delta: float) -> void:
 	if desired_velocity.length() > max_pull_speed:
 		desired_velocity = desired_velocity.normalized() * max_pull_speed
 	_held_body.linear_velocity = desired_velocity
-	_held_body.angular_velocity = _held_body.angular_velocity.lerp(Vector3.ZERO, clamp(angular_damping_per_second * delta, 0.0, 1.0))
+	_apply_orientation_control()
+
+
+func _apply_orientation_control() -> void:
+	var target_quat: Quaternion = Quaternion(hold_target.global_transform.basis.orthonormalized())
+	var current_quat: Quaternion = Quaternion(_held_body.global_transform.basis.orthonormalized())
+	var rot_diff: Quaternion = target_quat * current_quat.inverse()
+	if rot_diff.w < 0.0:
+		rot_diff = Quaternion(-rot_diff.x, -rot_diff.y, -rot_diff.z, -rot_diff.w)
+	var desired_angular: Vector3 = Vector3(rot_diff.x, rot_diff.y, rot_diff.z) * 2.0 * orientation_stiffness
+	if desired_angular.length() > max_angular_speed:
+		desired_angular = desired_angular.normalized() * max_angular_speed
+	_held_body.angular_velocity = desired_angular
 
 
 func _try_grab() -> void:
