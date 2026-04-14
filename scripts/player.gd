@@ -65,3 +65,9 @@ func _register_debug_watches() -> void:
 		return
 	var grab: GrabController = $Head/Camera3D/GrabController
 	overlay.watch("held", Callable(grab, "held_body_name"))
+	overlay.watch("egg.state", func() -> String:
+		var f: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+		return f.state_name() if f else "-")
+	overlay.watch("egg.progress", func() -> String:
+		var f: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+		return "%.2f" % f.cook_progress if f else "-")

@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/food_item.gd" id="1_food"]
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_egg"]
+radius = 0.07
+
+[sub_resource type="SphereMesh" id="SphereMesh_egg"]
+radius = 0.07
+height = 0.14
+
+[node name="Egg" type="RigidBody3D"]
+mass = 0.1
+script = ExtResource("1_food")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_egg")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_egg")
