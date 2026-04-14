@@ -52,6 +52,53 @@ size = Vector3(0.2, 6, 12)
 [sub_resource type="BoxShape3D" id="BoxShape3D_wallEW"]
 size = Vector3(0.2, 6, 12)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_counter"]
+albedo_color = Color(0.5, 0.45, 0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_stove"]
+albedo_color = Color(0.25, 0.25, 0.28, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate_rack"]
+albedo_color = Color(0.5, 0.55, 0.6, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pass"]
+albedo_color = Color(0.7, 0.6, 0.45, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_order_board"]
+albedo_color = Color(0.2, 0.2, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_counter_stove"]
+size = Vector3(1.5, 1, 1.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_counter"]
+material = SubResource("StandardMaterial3D_counter")
+size = Vector3(1.5, 1, 1.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_stove"]
+material = SubResource("StandardMaterial3D_stove")
+size = Vector3(1.5, 1, 1.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plate_rack"]
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_plate_rack"]
+material = SubResource("StandardMaterial3D_plate_rack")
+size = Vector3(1, 1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pass"]
+size = Vector3(2, 1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_pass"]
+material = SubResource("StandardMaterial3D_pass")
+size = Vector3(2, 1, 0.8)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_order_board"]
+size = Vector3(2, 1.2, 0.1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_order_board"]
+material = SubResource("StandardMaterial3D_order_board")
+size = Vector3(2, 1.2, 0.1)
+
 [node name="Kitchen" type="Node3D" unique_id=1110490797]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1701750613]
@@ -115,7 +162,69 @@ shape = SubResource("BoxShape3D_wallEW")
 [node name="Player" parent="." unique_id=1854020303 instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 4)
 
+[node name="Counter" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Counter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_counter_stove")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Counter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_counter")
+
+[node name="Stove" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Stove"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_counter_stove")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Stove"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_stove")
+
+[node name="PlateRack" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlateRack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_plate_rack")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PlateRack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_plate_rack")
+
+[node name="Pass" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Pass"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_pass")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Pass"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_pass")
+
+[node name="OrderBoard" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -5.8)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="OrderBoard"]
+shape = SubResource("BoxShape3D_order_board")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="OrderBoard"]
+mesh = SubResource("BoxMesh_order_board")
+
+[node name="TicketLabel" type="Label3D" parent="OrderBoard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.06)
+pixel_size = 0.01
+text = "1× Fried Egg"
+font_size = 64
+horizontal_alignment = 1
+vertical_alignment = 1
+modulate = Color(1, 1, 1, 1)
+
 [node name="Egg" parent="." instance=ExtResource("3_egg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.2, 0)
 
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]
