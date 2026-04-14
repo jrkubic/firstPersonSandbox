@@ -7,17 +7,37 @@ signal delivered
 
 @onready var _order_system: OrderSystem = get_node(order_system_path)
 
+var _plates_inside: Array[Plate] = []
+
 
 func _ready() -> void:
 	body_entered.connect(_on_body_entered)
+	body_exited.connect(_on_body_exited)
+
+
+func _physics_process(_delta: float) -> void:
+	if _plates_inside.is_empty():
+		return
+	for plate in _plates_inside.duplicate():
+		if not is_instance_valid(plate):
+			_plates_inside.erase(plate)
+			continue
+		if _order_system.check_delivery(plate):
+			_deliver(plate)
 
 
 func _on_body_entered(body: Node) -> void:
-	if not body is Plate:
-		return
-	var plate: Plate = body
-	if not _order_system.check_delivery(plate):
-		return
+	if body is Plate and not _plates_inside.has(body):
+		_plates_inside.append(body)
+
+
+func _on_body_exited(body: Node) -> void:
+	if body is Plate:
+		_plates_inside.erase(body)
+
+
+func _deliver(plate: Plate) -> void:
+	_plates_inside.erase(plate)
 	delivered.emit()
 	for food in plate.get_contents():
 		if is_instance_valid(food):
