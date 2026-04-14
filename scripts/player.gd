@@ -74,3 +74,6 @@ func _register_debug_watches() -> void:
 	overlay.watch("pan.on_stove", func() -> String:
 		var p: Pan = get_tree().get_first_node_in_group("pan") as Pan
 		return p.on_stove_text() if p else "-")
+	overlay.watch("plate.contents", func() -> String:
+		var pl: Plate = get_tree().get_first_node_in_group("plate") as Plate
+		return pl.container.contents_text() if pl else "-")

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_overlay.tscn" id="2_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/items/egg.tscn" id="3_egg"]
 [ext_resource type="PackedScene" path="res://scenes/items/pan.tscn" id="4_pan"]
+[ext_resource type="PackedScene" path="res://scenes/items/plate.tscn" id="5_plate"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -230,5 +231,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.2, 0)
 
 [node name="Pan" parent="." instance=ExtResource("4_pan")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+
+[node name="Plate" parent="." instance=ExtResource("5_plate")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1.05, 0)
 
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]

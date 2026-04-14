@@ -1,0 +1,37 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/plate.gd" id="1_plate"]
+[ext_resource type="Script" path="res://scripts/systems/food_container.gd" id="2_food_container"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_plate"]
+radius = 0.22
+height = 0.03
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plate"]
+albedo_color = Color(0.95, 0.95, 0.95, 1)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_plate"]
+material = SubResource("StandardMaterial3D_plate")
+top_radius = 0.22
+bottom_radius = 0.22
+height = 0.03
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_food_container"]
+size = Vector3(0.4, 0.15, 0.4)
+
+[node name="Plate" type="RigidBody3D"]
+mass = 0.3
+script = ExtResource("1_plate")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("CylinderShape3D_plate")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("CylinderMesh_plate")
+
+[node name="FoodContainer" type="Area3D" parent="."]
+script = ExtResource("2_food_container")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="FoodContainer"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
+shape = SubResource("BoxShape3D_food_container")
