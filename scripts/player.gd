@@ -6,7 +6,7 @@ extends CharacterBody3D
 @export var air_control := 0.3
 @export var jump_velocity := 9.0
 @export var gravity := 25.0
-@export var mouse_sensitivity := 0.003
+@export var mouse_sensitivity := 0.0022
 @export_range(-89.0, 0.0) var min_pitch := -85.0
 @export_range(0.0, 89.0) var max_pitch := 85.0
 
