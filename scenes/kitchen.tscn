@@ -8,6 +8,8 @@
 [ext_resource type="Script" path="res://scripts/systems/order_system.gd" id="6_order_system"]
 [ext_resource type="Script" path="res://scripts/systems/delivery_zone.gd" id="7_delivery_zone"]
 [ext_resource type="Script" path="res://scripts/ui/order_board.gd" id="8_order_board"]
+[ext_resource type="Script" path="res://scripts/systems/item_spawner.gd" id="9_item_spawner"]
+[ext_resource type="Script" path="res://scripts/systems/kitchen_loop.gd" id="10_kitchen_loop"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -181,6 +183,11 @@ shape = SubResource("BoxShape3D_counter_stove")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_counter")
 
+[node name="EggSpawner" type="Node3D" parent="Counter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+script = ExtResource("9_item_spawner")
+item_scene = ExtResource("3_egg")
+
 [node name="Stove" type="StaticBody3D" parent="." groups=["stove"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
@@ -203,8 +210,19 @@ shape = SubResource("BoxShape3D_plate_rack")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_plate_rack")
 
+[node name="PlateSpawner" type="Node3D" parent="PlateRack"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+script = ExtResource("9_item_spawner")
+item_scene = ExtResource("5_plate")
+
 [node name="OrderSystem" type="Node" parent="."]
 script = ExtResource("6_order_system")
+
+[node name="KitchenLoop" type="Node" parent="."]
+script = ExtResource("10_kitchen_loop")
+delivery_zone_path = NodePath("../Pass/DeliveryZone")
+plate_spawner_path = NodePath("../PlateRack/PlateSpawner")
+egg_spawner_path = NodePath("../Counter/EggSpawner")
 
 [node name="Pass" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
@@ -245,13 +263,7 @@ modulate = Color(1, 1, 1, 1)
 script = ExtResource("8_order_board")
 order_system_path = NodePath("../../OrderSystem")
 
-[node name="Egg" parent="." instance=ExtResource("3_egg")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 1.2, 0)
-
 [node name="Pan" parent="." instance=ExtResource("4_pan")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
-
-[node name="Plate" parent="." instance=ExtResource("5_plate")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1.05, 0)
 
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]
