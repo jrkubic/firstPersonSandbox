@@ -1,9 +1,9 @@
 class_name GrabController
 extends Node3D
 
-@export var grab_range: float = 2.5
+@export var grab_range: float = 4.0
 @export var break_distance: float = 1.75
-@export var throw_impulse: float = 8.0
+@export var throw_speed: float = 10.0
 @export var pull_strength: float = 25.0
 @export var max_pull_speed: float = 20.0
 @export var angular_damping_per_second: float = 10.0
@@ -96,4 +96,4 @@ func _throw() -> void:
 	var body: RigidBody3D = _held_body
 	var forward: Vector3 = -camera.global_transform.basis.z
 	_release()
-	body.apply_central_impulse(forward * throw_impulse)
+	body.linear_velocity = forward * throw_speed
