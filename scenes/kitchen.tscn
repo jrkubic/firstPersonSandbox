@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://scripts/systems/kitchen_loop.gd" id="10_kitchen_loop"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="11_pause_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="12_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/score_popup.tscn" id="13_score_popup"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -274,3 +275,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
 
 [node name="HUD" parent="." instance=ExtResource("12_hud")]
 delivery_zone_path = NodePath("../Pass/DeliveryZone")
+popup_scene = ExtResource("13_score_popup")
