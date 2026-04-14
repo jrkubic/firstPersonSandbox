@@ -4,7 +4,7 @@
 
 [node name="ScorePopup" type="Label3D"]
 script = ExtResource("1_score_popup")
-pixel_size = 0.005
+pixel_size = 0.0025
 billboard = 1
 no_depth_test = true
 text = "+1"
