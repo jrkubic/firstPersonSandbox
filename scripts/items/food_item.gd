@@ -4,8 +4,8 @@ extends RigidBody3D
 enum State { RAW, COOKING, COOKED, BURNED }
 
 @export var recipe_tag: String = "egg"
-@export var cook_duration: float = 1.5  # seconds from RAW to COOKED
-@export var burn_duration: float = 1.5  # seconds from COOKED to BURNED
+@export var cook_duration: float = 4.0  # seconds from RAW to COOKED
+@export var burn_duration: float = 4.0  # seconds from COOKED to BURNED
 
 @export var raw_color: Color = Color(1.0, 1.0, 0.95)
 @export var cooked_color: Color = Color(0.95, 0.75, 0.25)
