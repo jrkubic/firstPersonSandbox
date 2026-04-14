@@ -17,6 +17,11 @@ var _cached_gravity_scale: float = 1.0
 
 @onready var hold_target: Node3D = get_node(hold_target_path)
 @onready var camera: Camera3D = get_node(camera_path)
+@onready var _exclude_body: CollisionObject3D = (
+	get_node_or_null(exclude_body_path) as CollisionObject3D
+	if not exclude_body_path.is_empty()
+	else null
+)
 
 
 func is_holding() -> bool:
@@ -61,10 +66,8 @@ func _try_grab() -> void:
 	var to: Vector3 = from + (-camera.global_transform.basis.z) * grab_range
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.collide_with_bodies = true
-	if not exclude_body_path.is_empty():
-		var exclude_node: Node = get_node_or_null(exclude_body_path)
-		if exclude_node is CollisionObject3D:
-			query.exclude = [(exclude_node as CollisionObject3D).get_rid()]
+	if _exclude_body:
+		query.exclude = [_exclude_body.get_rid()]
 	var hit: Dictionary = space.intersect_ray(query)
 	if hit.is_empty():
 		return
@@ -74,11 +77,15 @@ func _try_grab() -> void:
 	_cached_gravity_scale = collider.gravity_scale
 	_held_body = collider
 	_held_body.gravity_scale = 0.0
+	if _exclude_body:
+		_held_body.add_collision_exception_with(_exclude_body)
 
 
 func _release() -> void:
 	if is_instance_valid(_held_body):
 		_held_body.gravity_scale = _cached_gravity_scale
+		if _exclude_body:
+			_held_body.remove_collision_exception_with(_exclude_body)
 	_held_body = null
 
 
