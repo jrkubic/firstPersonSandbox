@@ -14,7 +14,7 @@ enum State { RAW, COOKING, COOKED, BURNED }
 signal state_changed(new_state: State)
 
 var state: State = State.RAW
-var cook_progress: float = 0.0  # 0..1 is cook phase, 1..2 is burn phase
+var cook_progress: float = 0.0  # seconds elapsed; 0..cook_duration is cook, then ..+burn_duration is burn
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
 var _material: StandardMaterial3D
@@ -30,13 +30,13 @@ func _ready() -> void:
 func tick_cook(delta: float) -> void:
 	if state == State.BURNED:
 		return
-	var rate: float = 1.0 / cook_duration if cook_progress < 1.0 else 1.0 / burn_duration
-	cook_progress += rate * delta
+	cook_progress += delta
+	var burn_threshold: float = cook_duration + burn_duration
 	var new_state: State = state
-	if cook_progress >= 2.0:
-		cook_progress = 2.0
+	if cook_progress >= burn_threshold:
+		cook_progress = burn_threshold
 		new_state = State.BURNED
-	elif cook_progress >= 1.0:
+	elif cook_progress >= cook_duration:
 		new_state = State.COOKED
 	else:
 		new_state = State.COOKING
@@ -64,8 +64,10 @@ func _update_color() -> void:
 	if _material == null:
 		return
 	var c: Color
-	if cook_progress <= 1.0:
-		c = raw_color.lerp(cooked_color, cook_progress)
+	if cook_progress <= cook_duration:
+		var t: float = 0.0 if cook_duration <= 0.0 else clamp(cook_progress / cook_duration, 0.0, 1.0)
+		c = raw_color.lerp(cooked_color, t)
 	else:
-		c = cooked_color.lerp(burned_color, cook_progress - 1.0)
+		var t: float = 0.0 if burn_duration <= 0.0 else clamp((cook_progress - cook_duration) / burn_duration, 0.0, 1.0)
+		c = cooked_color.lerp(burned_color, t)
 	_material.albedo_color = c
