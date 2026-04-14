@@ -3,7 +3,7 @@ extends Node3D
 
 @export var grab_range: float = 4.0
 @export var break_distance: float = 1.75
-@export var throw_speed: float = 10.0
+@export var throw_speed: float = 22.0
 @export var pull_strength: float = 25.0
 @export var max_pull_speed: float = 20.0
 @export var angular_damping_per_second: float = 10.0
