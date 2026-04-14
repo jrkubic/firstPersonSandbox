@@ -1088,3 +1088,13 @@ Do NOT add any of the following in this plan. They are deliberate non-goals for 
 - Automated tests
 
 If one of these becomes necessary to unblock a task, **stop and talk to the user** before adding it.
+
+---
+
+## Post-slice backlog (future work, not part of the 12 tasks)
+
+Captured during execution — do NOT address in the slice. Revisit after Task 12:
+
+- **Crouch movement.** Floor-level items like the egg are awkward to reach because you can't lower the camera. Add `crouch` action + smooth `Head` Y-offset lerp while held. Pairs well with collision shape resizing during crouch.
+- **Grab aim forgiveness.** Small items (egg radius 0.07) are fiddly to raycast-click. Options: bump `GrabController.grab_range` from 2.5 to 3.5+, or upgrade the ray to a short sphere cast (`PhysicsShapeQueryParameters3D`) for a more forgiving aim cone.
+
