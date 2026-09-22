@@ -23,6 +23,7 @@ var containers: int = 0
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
 var _material: StandardMaterial3D
+var _painted_progress: float = -1.0
 
 
 func _ready() -> void:
@@ -41,8 +42,9 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	# Clients never tick_cook; cook_progress arrives from the host, so the
 	# colour has to follow it here.
-	if not NetSession.is_authority():
+	if not NetSession.is_authority() and cook_progress != _painted_progress:
 		_update_color()
+		_painted_progress = cook_progress
 
 
 func tick_cook(delta: float) -> void:

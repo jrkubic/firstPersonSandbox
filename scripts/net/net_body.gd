@@ -30,6 +30,7 @@ var held_by: int = NOBODY:
 
 var _body: RigidBody3D
 var _received: bool = false
+var _snapped: bool = false
 
 
 static func of(body: Node) -> NetBody:
@@ -41,7 +42,6 @@ func _ready() -> void:
 	if NetSession.is_authority():
 		net_position = _body.global_position
 		net_rotation = _body.global_rotation
-		_received = false
 		return
 	_body.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	_body.freeze = true
@@ -51,13 +51,15 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if NetSession.is_authority():
+		# Reads the previous physics step's result (one 60 Hz tick stale, fine at 30 Hz).
 		net_position = _body.global_position
 		net_rotation = _body.global_rotation
 		return
 	if not _received:
 		return
 	var target_basis := Basis.from_euler(net_rotation)
-	if _body.global_position.distance_to(net_position) > snap_distance:
+	if not _snapped or _body.global_position.distance_to(net_position) > snap_distance:
+		_snapped = true
 		_body.global_transform = Transform3D(target_basis, net_position)
 		return
 	var weight: float = 1.0 - exp(-smoothing * delta)
