@@ -1,0 +1,239 @@
+extends Node
+## Two-process headless replication test over ENet on localhost (the checks;
+## tests/net_test.gd is the --script launcher).
+##
+## Run both halves with tests/run_net_test.ps1, or by hand in two consoles:
+##   Godot_console.exe --headless --path . --script res://tests/net_test.gd -- role=host port=7777
+##   Godot_console.exe --headless --path . --script res://tests/net_test.gd -- role=client port=7777
+##
+## The host runs a scripted timeline (cook, wait for the client to grab,
+## deliver, start the run); the client asserts what it sees replicated.
+## Each half prints PASS/FAIL lines prefixed with its role and a SUMMARY
+## line, and exits 1 if any check failed or the watchdog tripped.
+
+const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
+const PHYSICS_TPS: int = 60
+const WATCHDOG_SECONDS: float = 120.0
+const EXPECTED_CHECKS: Dictionary = {"host": 4, "client": 5}
+
+# Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
+const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
+const EGG_IN_PAN_OFFSET: Vector3 = Vector3(0.0, 0.15, 0.0)
+const COUNTER_EGG_POS: Vector3 = Vector3(-2.5, 1.15, 0.5)
+const PASS_PLATE_POS: Vector3 = Vector3(0.0, 1.05, 3.0)
+const PASS_EGG_POS: Vector3 = Vector3(0.0, 1.15, 3.0)
+const CLIENT_STAND_POS: Vector3 = Vector3(0.0, 0.1, 2.0)
+const SPAWN_POINT_1: Vector3 = Vector3(-2.0, 0.1, 4.0)
+const STIR_INTERVAL: int = 20
+const STIR_DRIFT: float = 0.05
+
+var _role: String = "host"
+var _port: int = 7777
+var _passed: int = 0
+var _failed: int = 0
+var _start_msec: int = 0
+var _finished: bool = false
+
+var _kitchen: Node3D
+var _net: KitchenNet
+var _loop: KitchenLoop
+var _client_id: int = 0
+var _client_gone: bool = false
+var _connected: bool = false
+
+
+func _ready() -> void:
+	# Keep the watchdog ticking even if something pauses the tree.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_parse_args()
+	Engine.physics_ticks_per_second = PHYSICS_TPS
+	_start_msec = Time.get_ticks_msec()
+	_ensure_autoloads()
+	# Deferred: root is still mid-add_child during _ready.
+	if _role == "host":
+		_run_host.call_deferred()
+	else:
+		_run_client.call_deferred()
+
+
+func _process(_delta: float) -> void:
+	if _finished:
+		return
+	if float(Time.get_ticks_msec() - _start_msec) / 1000.0 > WATCHDOG_SECONDS:
+		print("FAIL %s.watchdog: did not finish within %.0f s" % [_role, WATCHDOG_SECONDS])
+		_failed += 1
+		_finish()
+
+
+# ---------------------------------------------------------------------------
+# Host timeline
+# ---------------------------------------------------------------------------
+
+func _run_host() -> void:
+	var err: Error = NetSession.host_enet(_port)
+	if not _check("host.listen", err == OK, "create_server returned %d" % err):
+		_finish()
+		return
+	multiplayer.peer_connected.connect(func(id: int) -> void: _client_id = id)
+	multiplayer.peer_disconnected.connect(func(_id: int) -> void: _client_gone = true)
+	_load_kitchen()
+	await _step(30)
+
+	# --- Task 5: host holds the plate before anyone joins ---
+
+	var joined: int = await _wait_until(func() -> bool: return _client_id != 0, PHYSICS_TPS * 40)
+	if not _check("host.client_connected", joined >= 0, "no peer within 40 s"):
+		_finish()
+		return
+	await _step(30)
+	_check("host.client_player_spawned", _net.get_player(_client_id) != null,
+		"no Players/%d on host" % _client_id)
+
+	# --- Task 4: cook the egg for the client to watch ---
+	# --- Task 5: wait for the client's grab and release ---
+	# --- Task 6: deliver, then start the run ---
+
+	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
+	_check("host.client_left", gone >= 0, "client never disconnected")
+	NetSession.leave()
+	_finish()
+
+
+# ---------------------------------------------------------------------------
+# Client timeline
+# ---------------------------------------------------------------------------
+
+func _run_client() -> void:
+	multiplayer.connected_to_server.connect(func() -> void: _connected = true)
+	NetSession.prepare_client_enet("127.0.0.1", _port)
+	_load_kitchen()  # KitchenNet._ready -> NetSession.kitchen_ready() connects
+	var connected: int = await _wait_until(func() -> bool: return _connected, PHYSICS_TPS * 20)
+	if not _check("client.connected", connected >= 0, "connected_to_server never fired"):
+		_finish()
+		return
+	var me: int = multiplayer.get_unique_id()
+	_check("client.peer_id", me > 1, "unique id=%d" % me)
+	var spawned: int = await _wait_until(func() -> bool: return _net.get_player(me) != null, PHYSICS_TPS * 10)
+	if not _check("client.player_spawned", spawned >= 0, "no Players/%d after 10 s" % me):
+		_finish_client()
+		return
+	var player: Player = _net.get_player(me)
+	_check("client.player_authority", player.is_multiplayer_authority(),
+		"authority=%d" % player.get_multiplayer_authority())
+	var host_player: Player = _net.get_player(1)
+	_check("client.host_player_visible",
+		host_player != null and not host_player.is_multiplayer_authority(),
+		"host player missing or wrongly owned")
+
+	# --- Task 4: item replication checks ---
+	# --- Task 5: grab / release through the host ---
+	# --- Task 6: delivery, mode, timer, teleport ---
+
+	# Stay connected long enough for the host's spawned-player check (it runs
+	# 30 frames after peer_connected); leaving sooner frees Players/<me> there.
+	await _step(PHYSICS_TPS * 2)
+	_finish_client()
+
+
+func _finish_client() -> void:
+	NetSession.leave()
+	_finish()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+func _load_kitchen() -> void:
+	var packed: PackedScene = load(KITCHEN_SCENE)
+	_kitchen = packed.instantiate() as Node3D
+	get_tree().root.add_child(_kitchen)
+	get_tree().current_scene = _kitchen
+	_net = _kitchen.get_node("Net") as KitchenNet
+	_loop = _kitchen.get_node("KitchenLoop") as KitchenLoop
+
+
+func _parse_args() -> void:
+	for arg: String in OS.get_cmdline_user_args():
+		var parts: PackedStringArray = arg.split("=", true, 1)
+		if parts.size() != 2:
+			continue
+		match parts[0]:
+			"role":
+				_role = parts[1]
+			"port":
+				_port = int(parts[1])
+
+
+func _ensure_autoloads() -> void:
+	var autoloads: Array = [
+		["SteamManager", "res://scripts/net/steam_manager.gd"],
+		["NetSession", "res://scripts/net/net_session.gd"],
+	]
+	for entry: Array in autoloads:
+		if get_tree().root.has_node(entry[0]):
+			continue
+		var node: Node = (load(entry[1]) as GDScript).new()
+		node.name = entry[0]
+		get_tree().root.add_child(node)
+
+
+func _finish() -> void:
+	_finished = true
+	var total: int = _passed + _failed
+	var expected: int = EXPECTED_CHECKS[_role]
+	if total != expected:
+		_failed += 1
+		print("FAIL %s.summary.count: %d checks ran, expected %d" % [_role, total, expected])
+	print("SUMMARY %s: %d passed, %d failed" % [_role, _passed, _failed])
+	get_tree().quit(1 if _failed > 0 else 0)
+
+
+func _check(check_name: String, ok: bool, detail: String = "") -> bool:
+	if ok:
+		_passed += 1
+		print("PASS %s" % check_name)
+	else:
+		_failed += 1
+		print("FAIL %s: %s" % [check_name, detail])
+	return ok
+
+
+func _step(frames: int) -> void:
+	for i in range(frames):
+		await get_tree().physics_frame
+
+
+func _wait_until(pred: Callable, max_frames: int) -> int:
+	for i in range(max_frames):
+		if pred.call():
+			return i
+		await get_tree().physics_frame
+	if pred.call():
+		return max_frames
+	return -1
+
+
+func _teleport(body: RigidBody3D, pos: Vector3) -> void:
+	body.global_transform = Transform3D(Basis.IDENTITY, pos)
+	body.linear_velocity = Vector3.ZERO
+	body.angular_velocity = Vector3.ZERO
+	body.sleeping = false
+
+
+func _horizontal_distance(a: Node3D, b: Node3D) -> float:
+	var d: Vector3 = a.global_position - b.global_position
+	return Vector2(d.x, d.z).length()
+
+
+## Drops the egg into the pan (assumed on the stove) and stirs until COOKED.
+func _cook_until_cooked(egg: FoodItem, pan: Pan) -> bool:
+	_teleport(egg, pan.global_position + EGG_IN_PAN_OFFSET)
+	var budget: int = int(egg.cook_duration * PHYSICS_TPS * 1.5) + 10
+	for i in range(budget):
+		if egg.state == FoodItem.State.COOKED:
+			return true
+		if i % STIR_INTERVAL == 0 and _horizontal_distance(egg, pan) > STIR_DRIFT:
+			_teleport(egg, pan.global_position + EGG_IN_PAN_OFFSET)
+		await get_tree().physics_frame
+	return egg.state == FoodItem.State.COOKED

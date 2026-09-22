@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bgjbhst6ro515" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" uid="uid://cpr43gwimylbx" path="res://scripts/systems/grab_controller.gd" id="2_grab"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/player_sync.tres" id="3_sync"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
@@ -59,3 +60,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0.85)
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = ExtResource("3_sync")

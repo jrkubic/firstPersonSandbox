@@ -1,5 +1,9 @@
 class_name Player
 extends CharacterBody3D
+## First-person player. Named after the peer that owns it ("1" for the host
+## or solo); that peer alone reads input, moves the body and looks through
+## the camera. Other peers receive position, rotation, head transform and the
+## crouch flag from the MultiplayerSynchronizer in player.tscn.
 
 @export var move_speed := 8.0
 @export var acceleration := 40.0
@@ -25,11 +29,22 @@ extends CharacterBody3D
 ## the ground never counts as an obstruction; its top stays at standing height.
 const STAND_PROBE_LIFT: float = 0.05
 
+## Replicated on change. The setter resizes the capsule so remote copies
+## block the right volume.
+var crouched: bool = false:
+	set(value):
+		if crouched == value:
+			return
+		crouched = value
+		_resize_capsule(value)
+
 @onready var head: Node3D = $Head
+@onready var camera: Camera3D = $Head/Camera3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var grab_controller: GrabController = $Head/Camera3D/GrabController
+@onready var skin: MeshInstance3D = $Skin
+@onready var crosshair: CanvasLayer = $Crosshair
 
-var _crouched: bool = false
 var _standing_head_y: float = 0.0
 var _standing_shape_y: float = 0.0
 var _standing_capsule_height: float = 0.0
@@ -40,8 +55,14 @@ var _capsule: CapsuleShape3D
 var _stand_probe: CapsuleShape3D
 
 
+func _enter_tree() -> void:
+	# Before _ready and before the MultiplayerSynchronizer initialises, so
+	# it knows which peer sends and which receive.
+	if name.is_valid_int():
+		set_multiplayer_authority(name.to_int())
+
+
 func _ready() -> void:
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_standing_head_y = head.position.y
 	_standing_shape_y = collision_shape.position.y
 	_capsule = (collision_shape.shape as CapsuleShape3D).duplicate() as CapsuleShape3D
@@ -50,10 +71,21 @@ func _ready() -> void:
 	_stand_probe = CapsuleShape3D.new()
 	_stand_probe.radius = _capsule.radius
 	_stand_probe.height = _standing_capsule_height - STAND_PROBE_LIFT * 2.0
-	call_deferred("_register_debug_watches")
+	if crouched:
+		_resize_capsule(true)  # spawn state may have arrived before _ready
+
+	var mine: bool = is_multiplayer_authority()
+	camera.current = mine
+	crosshair.visible = mine
+	skin.visible = not mine
+	if mine:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		call_deferred("_register_debug_watches")
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not is_multiplayer_authority():
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		head.rotate_x(-event.relative.y * mouse_sensitivity)
@@ -65,6 +97,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if not is_multiplayer_authority():
+		return
 	_update_crouch(delta)
 
 	if not is_on_floor():
@@ -73,7 +107,7 @@ func _physics_process(delta: float) -> void:
 	# Design choice: no jumping while crouched. A crouch-jump would let the
 	# shorter capsule slip onto counters and under geometry the standing
 	# player is meant to be blocked by; stand up first.
-	if Input.is_action_just_pressed("jump") and is_on_floor() and not _crouched:
+	if Input.is_action_just_pressed("jump") and is_on_floor() and not crouched:
 		velocity.y = jump_velocity
 
 	var input_dir := Vector2(
@@ -82,7 +116,7 @@ func _physics_process(delta: float) -> void:
 	)
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 
-	var speed: float = move_speed * (crouch_speed_multiplier if _crouched else 1.0)
+	var speed: float = move_speed * (crouch_speed_multiplier if crouched else 1.0)
 	var control := 1.0 if is_on_floor() else air_control
 	if direction != Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * control * delta)
@@ -95,7 +129,25 @@ func _physics_process(delta: float) -> void:
 
 
 func is_crouched() -> bool:
-	return _crouched
+	return crouched
+
+
+## Moves this body on its owning peer. The host calls send_teleport; the
+## RPC lands on whichever peer owns the node.
+func send_teleport(pos: Vector3) -> void:
+	if is_multiplayer_authority():
+		teleport(pos)
+	else:
+		teleport.rpc_id(get_multiplayer_authority(), pos)
+
+
+@rpc("any_peer", "reliable")
+func teleport(pos: Vector3) -> void:
+	var sender: int = multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != 1:
+		return  # only the host may move players
+	global_position = pos
+	velocity = Vector3.ZERO
 
 
 ## Crouch is a held action: down while "crouch" is pressed, up as soon as it is
@@ -103,21 +155,22 @@ func is_crouched() -> bool:
 ## needs a definite shape); only the Head eases toward its target height.
 func _update_crouch(delta: float) -> void:
 	var wants_crouch: bool = Input.is_action_pressed("crouch")
-	if wants_crouch and not _crouched:
-		_set_crouched(true)
-	elif not wants_crouch and _crouched and _has_stand_clearance():
-		_set_crouched(false)
+	if wants_crouch and not crouched:
+		crouched = true
+	elif not wants_crouch and crouched and _has_stand_clearance():
+		crouched = false
 
-	var target_head_y: float = _standing_head_y + (crouch_height_offset if _crouched else 0.0)
+	var target_head_y: float = _standing_head_y + (crouch_height_offset if crouched else 0.0)
 	var weight: float = 1.0 - exp(-crouch_lerp_speed * delta)
 	head.position.y = lerpf(head.position.y, target_head_y, weight)
 
 
 ## Resizes the capsule and shifts CollisionShape3D so its bottom stays on the
 ## same floor level (centre = standing centre minus half the height change).
-func _set_crouched(crouched: bool) -> void:
-	_crouched = crouched
-	var height: float = crouch_capsule_height if crouched else _standing_capsule_height
+func _resize_capsule(is_crouched_now: bool) -> void:
+	if _capsule == null:
+		return
+	var height: float = crouch_capsule_height if is_crouched_now else _standing_capsule_height
 	_capsule.height = height
 	collision_shape.position.y = _standing_shape_y - (_standing_capsule_height - height) * 0.5
 
@@ -145,7 +198,7 @@ func _register_debug_watches() -> void:
 		return
 	var grab: GrabController = grab_controller
 	overlay.watch("held", Callable(grab, "held_body_name"))
-	overlay.watch("crouched", func() -> String: return str(_crouched))
+	overlay.watch("crouched", func() -> String: return str(crouched))
 	overlay.watch("egg.state", func() -> String:
 		var f: FoodItem = get_tree().get_first_node_in_group(Groups.FOOD) as FoodItem
 		return f.state_name() if f else "-")
