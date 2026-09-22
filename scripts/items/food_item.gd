@@ -38,6 +38,13 @@ func _ready() -> void:
 	_update_color()
 
 
+func _process(_delta: float) -> void:
+	# Clients never tick_cook; cook_progress arrives from the host, so the
+	# colour has to follow it here.
+	if not NetSession.is_authority():
+		_update_color()
+
+
 func tick_cook(delta: float) -> void:
 	if state == State.BURNED:
 		return

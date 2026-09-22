@@ -16,6 +16,8 @@ func _ready() -> void:
 
 
 func _physics_process(_delta: float) -> void:
+	if not NetSession.is_authority():
+		return
 	if _plates_inside.is_empty():
 		return
 	for plate in _plates_inside.duplicate():

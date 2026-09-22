@@ -14,7 +14,7 @@ extends Node
 const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
 const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 120.0
-const EXPECTED_CHECKS: Dictionary = {"host": 4, "client": 5}
+const EXPECTED_CHECKS: Dictionary = {"host": 5, "client": 11}
 
 # Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
 const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
@@ -89,7 +89,12 @@ func _run_host() -> void:
 	_check("host.client_player_spawned", _net.get_player(_client_id) != null,
 		"no Players/%d on host" % _client_id)
 
-	# --- Task 4: cook the egg for the client to watch ---
+	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+	var pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
+	var cooked: bool = await _cook_until_cooked(egg, pan)
+	_check("host.egg_cooked", cooked, "state=%s" % egg.state_name())
+	# Park it on the counter so it stops cooking while the client reacts.
+	_teleport(egg, COUNTER_EGG_POS)
 	# --- Task 5: wait for the client's grab and release ---
 	# --- Task 6: deliver, then start the run ---
 
@@ -125,7 +130,24 @@ func _run_client() -> void:
 		host_player != null and not host_player.is_multiplayer_authority(),
 		"host player missing or wrongly owned")
 
-	# --- Task 4: item replication checks ---
+	var egg_seen: int = await _wait_until(
+		func() -> bool: return get_tree().get_first_node_in_group("food") != null, PHYSICS_TPS * 5)
+	if not _check("client.sees_egg", egg_seen >= 0, "no food node replicated in 5 s"):
+		_finish_client()
+		return
+	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+	_check("client.egg_frozen", egg.freeze, "client egg is simulating physics")
+	_check("client.egg_parent", egg.get_parent() == _kitchen.get_node("Items"),
+		"parent=%s" % egg.get_parent().name)
+	var progressing: int = await _wait_until(
+		func() -> bool: return egg.cook_progress > 0.25, PHYSICS_TPS * 20)
+	_check("client.cook_progress_syncs", progressing >= 0, "progress=%.2f" % egg.cook_progress)
+	var cooked: int = await _wait_until(
+		func() -> bool: return egg.state == FoodItem.State.COOKED, PHYSICS_TPS * 20)
+	_check("client.state_syncs", cooked >= 0, "state=%s" % egg.state_name())
+	var on_counter: int = await _wait_until(
+		func() -> bool: return egg.global_position.distance_to(COUNTER_EGG_POS) < 0.5, PHYSICS_TPS * 5)
+	_check("client.position_syncs", on_counter >= 0, "egg at %s" % egg.global_position)
 	# --- Task 5: grab / release through the host ---
 	# --- Task 6: delivery, mode, timer, teleport ---
 

@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://mm1wq42af4l5" path="res://scripts/items/pan.gd" id="1_pan"]
 [ext_resource type="Script" uid="uid://bx1fkp2wf4wua" path="res://scripts/systems/stove_detector.gd" id="2_stove_detector"]
 [ext_resource type="Script" uid="uid://cwht0cdwfmcdq" path="res://scripts/systems/cook_slot.gd" id="3_cook_slot"]
+[ext_resource type="Script" path="res://scripts/net/net_body.gd" id="4_net_body"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/container_sync.tres" id="5_sync"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_handle"]
 height = 0.4
@@ -134,3 +136,11 @@ pan_path = NodePath("..")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="CookSlot" unique_id=1741521346]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
 shape = SubResource("BoxShape3D_cook_slot")
+
+[node name="NetBody" type="Node" parent="."]
+script = ExtResource("4_net_body")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = ExtResource("5_sync")

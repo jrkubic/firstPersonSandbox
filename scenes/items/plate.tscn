@@ -1,7 +1,9 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/items/plate.gd" id="1_plate"]
 [ext_resource type="Script" path="res://scripts/systems/food_container.gd" id="2_food_container"]
+[ext_resource type="Script" path="res://scripts/net/net_body.gd" id="3_net_body"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/container_sync.tres" id="4_sync"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_plate"]
 radius = 0.22
@@ -99,3 +101,11 @@ script = ExtResource("2_food_container")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FoodContainer"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0)
 shape = SubResource("BoxShape3D_food_container")
+
+[node name="NetBody" type="Node" parent="."]
+script = ExtResource("3_net_body")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = ExtResource("4_sync")
