@@ -44,9 +44,25 @@ func items_root() -> Node3D:
 ## Host only. Spawns the Player for peer_id at the next spawn point and
 ## replicates it to every peer.
 func spawn_player(peer_id: int) -> Player:
-	var index: int = player_count() % _spawn_points.get_child_count()
-	var point: Node3D = _spawn_points.get_child(index) as Node3D
+	var point: Node3D = _free_spawn_point()
 	return _player_spawner.spawn([peer_id, point.global_position]) as Player
+
+
+## First spawn point with no current Player within 1 m of it; when every
+## point is taken, cycles through them by player count.
+func _free_spawn_point() -> Node3D:
+	for point in _spawn_points.get_children():
+		var taken: bool = false
+		for player in _players.get_children():
+			if player.is_queued_for_deletion():
+				continue
+			if (player as Node3D).global_position.distance_to(
+					(point as Node3D).global_position) < 1.0:
+				taken = true
+				break
+		if not taken:
+			return point as Node3D
+	return _spawn_points.get_child(player_count() % _spawn_points.get_child_count()) as Node3D
 
 
 ## MultiplayerSpawner.spawn_function: runs on every peer with the same data.
