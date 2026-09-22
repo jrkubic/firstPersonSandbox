@@ -2063,8 +2063,8 @@ Replace the host line `# --- Task 5: host holds the plate before anyone joins --
 ```gdscript
 	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
 	var host_grab: GrabController = _net.get_player(1).grab_controller
-	# The rack is 4.8 m from the host camera (past grab_range + REACH_TOLERANCE)
-	# and past break_distance from the hold target, so bring it to hand first,
+	# The rack is 3.7 m from the host's hold target (past break_distance), so
+	# the host would reject it; bring it to hand first,
 	# as the smoke test does for every grab.
 	_teleport(plate, host_grab.hold_target.global_position)
 	await _step(2)
