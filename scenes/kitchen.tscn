@@ -14,6 +14,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/score_popup.tscn" id="13_score_popup"]
 [ext_resource type="PackedScene" path="res://scenes/ui/end_screen.tscn" id="14_end_screen"]
 [ext_resource type="Script" path="res://scripts/systems/kitchen_net.gd" id="15_kitchen_net"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/loop_sync.tres" id="16_loop_sync"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/orders_sync.tres" id="17_orders_sync"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/net_sync.tres" id="18_net_sync"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -257,9 +260,17 @@ spawn_parent_path = NodePath("../../Items")
 [node name="OrderSystem" type="Node" parent="."]
 script = ExtResource("6_order_system")
 
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="OrderSystem"]
+replication_config = ExtResource("17_orders_sync")
+
 [node name="KitchenLoop" type="Node" parent="."]
 script = ExtResource("10_kitchen_loop")
 delivery_zone_path = NodePath("../Pass/DeliveryZone")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="KitchenLoop"]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = ExtResource("16_loop_sync")
 
 [node name="Net" type="Node" parent="."]
 script = ExtResource("15_kitchen_net")
@@ -270,6 +281,9 @@ spawn_path = NodePath("../../Players")
 [node name="ItemReplicator" type="MultiplayerSpawner" parent="Net"]
 _spawnable_scenes = PackedStringArray("res://scenes/items/egg.tscn", "res://scenes/items/pan.tscn", "res://scenes/items/plate.tscn")
 spawn_path = NodePath("../../Items")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="Net"]
+replication_config = ExtResource("18_net_sync")
 
 [node name="Pass" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)

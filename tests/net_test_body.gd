@@ -14,7 +14,7 @@ extends Node
 const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
 const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 120.0
-const EXPECTED_CHECKS: Dictionary = {"host": 8, "client": 17}
+const EXPECTED_CHECKS: Dictionary = {"host": 11, "client": 23}
 
 # Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
 const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
@@ -117,7 +117,21 @@ func _run_host() -> void:
 	_check("host.client_released_egg", released >= 0, "held_by=%d" % egg_net.held_by)
 	host_grab.request_release()
 	await _step(2)
-	# --- Task 6: deliver, then start the run ---
+	_teleport(plate, PASS_PLATE_POS)
+	await _step(10)
+	_teleport(egg, PASS_EGG_POS)
+	var delivered: int = await _wait_until(
+		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 5)
+	_check("host.delivered", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
+	_check("host.practice_no_win", _loop.state == KitchenLoop.State.PLAYING and _net.mode == KitchenNet.Mode.PRACTICE,
+		"state=%d mode=%d" % [_loop.state, _net.mode])
+	await _step(30)
+	await _net.start_run()
+	_check("host.run_started",
+		_net.mode == KitchenNet.Mode.RUN and _loop.deliveries_made == 0
+		and get_tree().get_nodes_in_group("food").size() == 2 and get_tree().get_nodes_in_group("plate").size() == 2,
+		"mode=%d deliveries=%d eggs=%d plates=%d" % [_net.mode, _loop.deliveries_made,
+			get_tree().get_nodes_in_group("food").size(), get_tree().get_nodes_in_group("plate").size()])
 
 	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
 	_check("host.client_left", gone >= 0, "client never disconnected")
@@ -200,7 +214,22 @@ func _run_client() -> void:
 	_check("client.release_rpc", released >= 0 and NetBody.of(egg).held_by == NetBody.NOBODY,
 		"holding=%s held_by=%d" % [grab.is_holding(), NetBody.of(egg).held_by])
 	player.global_position = CLIENT_STAND_POS
-	# --- Task 6: delivery, mode, timer, teleport ---
+	_check("client.practice_mode_on_join", _net.mode == KitchenNet.Mode.PRACTICE,
+		"mode=%d" % _net.mode)
+	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
+		"names=%s" % str(NetSession.peer_names))
+	var delivered: int = await _wait_until(
+		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
+	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
+	var run_mode: int = await _wait_until(
+		func() -> bool: return _net.mode == KitchenNet.Mode.RUN, PHYSICS_TPS * 20)
+	_check("client.mode_syncs", run_mode >= 0, "mode=%d" % _net.mode)
+	var teleported: int = await _wait_until(
+		func() -> bool: return player.global_position.distance_to(SPAWN_POINT_1) < 0.5, PHYSICS_TPS * 5)
+	_check("client.teleport_rpc", teleported >= 0, "player at %s" % player.global_position)
+	var ticking: int = await _wait_until(
+		func() -> bool: return _loop.elapsed_time > 0.5, PHYSICS_TPS * 5)
+	_check("client.timer_syncs", ticking >= 0, "elapsed_time=%.2f" % _loop.elapsed_time)
 
 	# Stay connected long enough for the host's spawned-player check (it runs
 	# 30 frames after peer_connected); leaving sooner frees Players/<me> there.
