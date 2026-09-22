@@ -52,6 +52,8 @@ func held_body_name() -> String:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not is_multiplayer_authority():
+		return  # authority propagates from Player: only the owning peer grabs
 	if event.is_action_pressed("interact"):
 		if is_holding():
 			_release()

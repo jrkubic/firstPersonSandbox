@@ -141,6 +141,8 @@ func send_teleport(pos: Vector3) -> void:
 		teleport.rpc_id(get_multiplayer_authority(), pos)
 
 
+# Non-RPC callers on the host must go through send_teleport: a direct call
+# inside another RPC handler would see the remote sender id and be rejected.
 @rpc("any_peer", "reliable")
 func teleport(pos: Vector3) -> void:
 	var sender: int = multiplayer.get_remote_sender_id()

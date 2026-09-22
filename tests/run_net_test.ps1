@@ -8,21 +8,25 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $hostLog = Join-Path $env:TEMP "net_test_host.log"
 $clientLog = Join-Path $env:TEMP "net_test_client.log"
+$hostErr = Join-Path $env:TEMP "net_test_host.err.log"
+$clientErr = Join-Path $env:TEMP "net_test_client.err.log"
 
 $common = @("--headless", "--path", $projectRoot, "--script", "res://tests/net_test.gd", "--")
 $hostProc = Start-Process -FilePath $Godot -ArgumentList ($common + @("role=host", "port=$Port")) `
-    -PassThru -NoNewWindow -RedirectStandardOutput $hostLog
+    -PassThru -NoNewWindow -RedirectStandardOutput $hostLog -RedirectStandardError $hostErr
 $null = $hostProc.Handle  # cache the handle or ExitCode reads back as null
 Start-Sleep -Seconds 4
 $clientProc = Start-Process -FilePath $Godot -ArgumentList ($common + @("role=client", "port=$Port")) `
-    -PassThru -NoNewWindow -RedirectStandardOutput $clientLog
+    -PassThru -NoNewWindow -RedirectStandardOutput $clientLog -RedirectStandardError $clientErr
 $null = $clientProc.Handle
 
 if (-not $clientProc.WaitForExit(150000)) { $clientProc.Kill() }
 if (-not $hostProc.WaitForExit(60000)) { $hostProc.Kill() }
 
-Get-Content $hostLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)|SCRIPT ERROR|ERROR:"
-Get-Content $clientLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)|SCRIPT ERROR|ERROR:"
+Get-Content $hostLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)"
+Get-Content $clientLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)"
+# Godot writes SCRIPT ERROR / ERROR lines to stderr.
+Get-Content $hostErr, $clientErr | Select-String -Pattern "SCRIPT ERROR|ERROR:|WARNING:"
 
 $failed = ($hostProc.ExitCode -ne 0) -or ($clientProc.ExitCode -ne 0)
 if ($failed) { Write-Host "NET TEST FAILED (host=$($hostProc.ExitCode) client=$($clientProc.ExitCode))"; exit 1 }
