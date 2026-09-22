@@ -1153,20 +1153,26 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $hostLog = Join-Path $env:TEMP "net_test_host.log"
+$hostErr = Join-Path $env:TEMP "net_test_host.err.log"
 $clientLog = Join-Path $env:TEMP "net_test_client.log"
+$clientErr = Join-Path $env:TEMP "net_test_client.err.log"
 
 $common = @("--headless", "--path", $projectRoot, "--script", "res://tests/net_test.gd", "--")
 $hostProc = Start-Process -FilePath $Godot -ArgumentList ($common + @("role=host", "port=$Port")) `
-    -PassThru -NoNewWindow -RedirectStandardOutput $hostLog
+    -PassThru -NoNewWindow -RedirectStandardOutput $hostLog -RedirectStandardError $hostErr
+$null = $hostProc.Handle  # PowerShell 5.1: ExitCode is only readable after touching Handle
 Start-Sleep -Seconds 4
 $clientProc = Start-Process -FilePath $Godot -ArgumentList ($common + @("role=client", "port=$Port")) `
-    -PassThru -NoNewWindow -RedirectStandardOutput $clientLog
+    -PassThru -NoNewWindow -RedirectStandardOutput $clientLog -RedirectStandardError $clientErr
+$null = $clientProc.Handle
 
 if (-not $clientProc.WaitForExit(150000)) { $clientProc.Kill() }
 if (-not $hostProc.WaitForExit(60000)) { $hostProc.Kill() }
 
-Get-Content $hostLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)|SCRIPT ERROR|ERROR:"
-Get-Content $clientLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)|SCRIPT ERROR|ERROR:"
+Get-Content $hostLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)"
+Get-Content $clientLog | Select-String -Pattern "^(PASS|FAIL|XFAIL|SUMMARY)"
+# Godot writes SCRIPT ERROR / ERROR lines to stderr.
+Get-Content $hostErr, $clientErr | Select-String -Pattern "SCRIPT ERROR|ERROR:|WARNING:"
 
 $failed = ($hostProc.ExitCode -ne 0) -or ($clientProc.ExitCode -ne 0)
 if ($failed) { Write-Host "NET TEST FAILED (host=$($hostProc.ExitCode) client=$($clientProc.ExitCode))"; exit 1 }
@@ -1195,7 +1201,7 @@ func _initialize() -> void:
 		return
 	var body: Node = body_script.new() as Node
 	body.name = "NetTest"
-	get_tree().root.add_child(body)
+	root.add_child(body)
 ```
 
 **Step 2b: Create the body `tests/net_test_body.gd` (the failing test)**
@@ -1334,6 +1340,8 @@ func _run_client() -> void:
 	# --- Task 5: grab / release through the host ---
 	# --- Task 6: delivery, mode, timer, teleport ---
 
+	# Stay connected long enough for the host's post-connect checks to run.
+	await _step(PHYSICS_TPS * 2)
 	_finish_client()
 
 
@@ -1370,7 +1378,7 @@ func _parse_args() -> void:
 func _ensure_autoloads() -> void:
 	var autoloads: Array = [
 		["SteamManager", "res://scripts/net/steam_manager.gd"],
-		["NetSession", "res://scripts/net/netNetSession.gd"],
+		["NetSession", "res://scripts/net/net_session.gd"],
 	]
 	for entry: Array in autoloads:
 		if get_tree().root.has_node(entry[0]):
