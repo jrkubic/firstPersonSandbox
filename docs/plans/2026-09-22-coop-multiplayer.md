@@ -2497,7 +2497,7 @@ git commit -m "Grab, release and throw as host-validated requests; held_by repli
 
 **Step 1: Add the failing checks to `tests/net_test.gd`**
 
-In `tests/net_test_body.gd`, set `EXPECTED_CHECKS` to `{"host": 11, "client": 22}`.
+In `tests/net_test_body.gd`, set `EXPECTED_CHECKS` to `{"host": 11, "client": 23}`.
 
 Replace the host line `# --- Task 6: deliver, then start the run ---` with:
 
@@ -2827,7 +2827,7 @@ func _register_debug_watches() -> void:
 
 **Step 6: Run both tests**
 
-Expected: smoke `94 passed, 0 failed, 1 xfailed` (solo stays `RUN`, `practice` false, and `KitchenLoop.reset` is never called). Net `SUMMARY host: 11 passed`, `SUMMARY client: 22 passed`, `NET TEST PASSED`.
+Expected: smoke `94 passed, 0 failed, 1 xfailed` (solo stays `RUN`, `practice` false, and `KitchenLoop.reset` is never called). Net `SUMMARY host: 11 passed`, `SUMMARY client: 23 passed`, `NET TEST PASSED`.
 
 Failure guide:
 - `client.mode_syncs` or `client.timer_syncs` fails while `client.practice_mode_on_join` passes: the static-node synchronizers are not sending after the client's peer was swapped in. Fallback: have the host re-send `_apply_full_state` from a 0.5 s timer while online (unreliable is fine) and drop `loop_sync.tres`. Record which path you took in the design doc's "Known caveats".
@@ -3383,14 +3383,14 @@ git commit -m "GodotSteam 4.22.1 setup: dev app id, ignore binaries, Steam check
 - **How to play**: add `Co-op` steps: Host with Steam, Escape > Invite friends, guests accept, practice together, host Escape > Start Run, end screen Back to Practice.
 - **Controls** table: add `Escape` row text `Pause menu (solo) / session menu with Invite and Start Run (online)`.
 - **Debug overlay**: add `net.role`, `net.peer`, `net.players`, `net.mode`.
-- **Automated tests**: rename the section `Automated tests`; keep the smoke test text; add the net test command, what its 33 checks cover in one paragraph, and that it needs no Steam.
+- **Automated tests**: rename the section `Automated tests`; keep the smoke test text; add the net test command, what its 34 checks cover in one paragraph, and that it needs no Steam.
 - **Manual smoke test**: keep; add the Steam checklist from Task 8 as a second numbered list titled `Manual Steam test`, with a small table recording the date, Godot/GodotSteam versions, and measured held-item feel.
 - **Project layout**: add `scripts/net/{net_session,steam_manager,net_body}.gd`, `scripts/systems/kitchen_net.gd`, `scripts/ui/lobby_panel.gd`, `scenes/sync/*.tres`, `scenes/ui/lobby_panel.tscn`, `tests/{net_test.gd,run_net_test.ps1}`.
 - **Known limitations**: replace `Single player only; no networking` with the design doc's caveats: held-item lag on clients, chasing interpolation, no host migration, no drop-in to a live run, App ID 480 only.
 
 **Step 2: tests/README.md**
 
-Add a `## Two-peer net test` section: how to run (`run_net_test.ps1`, or two consoles by hand), the host timeline vs. client assertions split, the check table (`host.*` 11, `client.*` 22), that `EXPECTED_CHECKS` must be updated per role, the 120 s watchdog, the 4 s head start the runner gives the host, and that logs land in `%TEMP%\net_test_host.log` / `net_test_client.log`. Also note in the smoke-test section that the player now lives at `Players/1` and items under `Items`.
+Add a `## Two-peer net test` section: how to run (`run_net_test.ps1`, or two consoles by hand), the host timeline vs. client assertions split, the check table (`host.*` 11, `client.*` 23), that `EXPECTED_CHECKS` must be updated per role, the 120 s watchdog, the 4 s head start the runner gives the host, and that logs land in `%TEMP%\net_test_host.log` / `net_test_client.log`. Also note in the smoke-test section that the player now lives at `Players/1` and items under `Items`.
 
 **Step 3: docs/WALKTHROUGH.md**
 
@@ -3412,7 +3412,7 @@ powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1
 git status --short
 ```
 
-Expected: `SUMMARY: 94 passed, 0 failed, 1 xfailed`; `NET TEST PASSED` with `host: 11 passed` and `client: 22 passed`; clean tree after the commit below.
+Expected: `SUMMARY: 94 passed, 0 failed, 1 xfailed`; `NET TEST PASSED` with `host: 11 passed` and `client: 23 passed`; clean tree after the commit below.
 
 **Step 7: Commit**
 
