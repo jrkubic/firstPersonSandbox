@@ -1234,6 +1234,9 @@ const COUNTER_EGG_POS: Vector3 = Vector3(-2.5, 1.15, 0.5)
 const PASS_PLATE_POS: Vector3 = Vector3(0.0, 1.05, 3.0)
 const PASS_EGG_POS: Vector3 = Vector3(0.0, 1.15, 3.0)
 const CLIENT_STAND_POS: Vector3 = Vector3(0.0, 0.1, 2.0)
+# In front of the counter so the parked egg is within break_distance of the
+# hold target (from CLIENT_STAND_POS it is 2.7 m away and would drop next tick).
+const COUNTER_STAND_POS: Vector3 = Vector3(-2.65, 0.1, 1.9)
 const SPAWN_POINT_1: Vector3 = Vector3(-2.0, 0.1, 4.0)
 const STIR_INTERVAL: int = 20
 const STIR_DRIFT: float = 0.05
@@ -2060,6 +2063,11 @@ Replace the host line `# --- Task 5: host holds the plate before anyone joins --
 ```gdscript
 	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
 	var host_grab: GrabController = _net.get_player(1).grab_controller
+	# The rack is 4.8 m from the host camera (past grab_range + REACH_TOLERANCE)
+	# and past break_distance from the hold target, so bring it to hand first,
+	# as the smoke test does for every grab.
+	_teleport(plate, host_grab.hold_target.global_position)
+	await _step(2)
 	host_grab.request_grab(plate.get_path())
 	await _step(2)
 	_check("host.plate_held",
@@ -2101,6 +2109,8 @@ Replace the client line `# --- Task 5: grab / release through the host ---` with
 		not grab.is_holding() and grab.last_reject == GrabController.Reject.TAKEN,
 		"holding=%s reject=%d" % [grab.is_holding(), grab.last_reject])
 
+	player.global_position = COUNTER_STAND_POS
+	await _step(5)
 	grab.request_grab(egg.get_path())
 	var held: int = await _wait_until(func() -> bool: return grab.is_holding(), PHYSICS_TPS * 5)
 	_check("client.grab_rpc", held >= 0 and NetBody.of(egg).held_by == me,
@@ -2112,6 +2122,8 @@ Replace the client line `# --- Task 5: grab / release through the host ---` with
 	var released: int = await _wait_until(func() -> bool: return not grab.is_holding(), PHYSICS_TPS * 5)
 	_check("client.release_rpc", released >= 0 and NetBody.of(egg).held_by == NetBody.NOBODY,
 		"holding=%s held_by=%d" % [grab.is_holding(), NetBody.of(egg).held_by])
+	player.global_position = CLIENT_STAND_POS
+	await _step(5)
 ```
 
 **Step 2: Run the net test to see it fail**
