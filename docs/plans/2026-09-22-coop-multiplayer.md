@@ -1459,7 +1459,7 @@ Expected: the client's `client.player_authority` fails (authority is still 1 bec
 
 **Step 4: Create the replication config `scenes/sync/player_sync.tres`**
 
-Continuous transforms are `always` (mode 1); the crouch flag is `on_change` (mode 2). `spawn = true` so a late joiner gets the current values with the spawn.
+Continuous transforms are `always` (mode 1); the crouch flag is `on_change` (mode 2). The player only yaws and the head only pitches, so those sync as single components (`:rotation:y`, `Head:rotation:x`); Godot 4.7 accepts subpaths in a replication config. `spawn = true` so a late joiner gets the current values with the spawn.
 
 ```
 [gd_resource type="SceneReplicationConfig" format=3]
@@ -1468,13 +1468,13 @@ Continuous transforms are `always` (mode 1); the crouch flag is `on_change` (mod
 properties/0/path = NodePath(".:position")
 properties/0/spawn = true
 properties/0/replication_mode = 1
-properties/1/path = NodePath(".:rotation")
+properties/1/path = NodePath(".:rotation:y")
 properties/1/spawn = true
 properties/1/replication_mode = 1
 properties/2/path = NodePath("Head:position")
 properties/2/spawn = true
 properties/2/replication_mode = 1
-properties/3/path = NodePath("Head:rotation")
+properties/3/path = NodePath("Head:rotation:x")
 properties/3/spawn = true
 properties/3/replication_mode = 1
 properties/4/path = NodePath(".:crouched")
