@@ -27,6 +27,7 @@ const STAND_PROBE_LIFT: float = 0.05
 
 @onready var head: Node3D = $Head
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
+@onready var grab_controller: GrabController = $Head/Camera3D/GrabController
 
 var _crouched: bool = false
 var _standing_head_y: float = 0.0
@@ -142,7 +143,7 @@ func _register_debug_watches() -> void:
 	var overlay: Node = get_tree().get_first_node_in_group(Groups.DEBUG_OVERLAY)
 	if overlay == null:
 		return
-	var grab: GrabController = $Head/Camera3D/GrabController
+	var grab: GrabController = grab_controller
 	overlay.watch("held", Callable(grab, "held_body_name"))
 	overlay.watch("crouched", func() -> String: return str(_crouched))
 	overlay.watch("egg.state", func() -> String:

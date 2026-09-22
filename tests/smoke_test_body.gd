@@ -59,6 +59,8 @@ var _plate_spawner: ItemSpawner
 var _player: Player
 var _camera: Camera3D
 var _grab: GrabController
+var _items: Node3D
+var _net: KitchenNet
 
 
 func _ready() -> void:
@@ -142,13 +144,16 @@ func _check_boot() -> bool:
 	_order_system = _kitchen.get_node_or_null("OrderSystem") as OrderSystem
 	_egg_spawner = _kitchen.get_node_or_null("Counter/EggSpawner") as ItemSpawner
 	_plate_spawner = _kitchen.get_node_or_null("PlateRack/PlateSpawner") as ItemSpawner
-	_player = _kitchen.get_node_or_null("Player") as Player
-	_camera = _kitchen.get_node_or_null("Player/Head/Camera3D") as Camera3D
-	_grab = _kitchen.get_node_or_null("Player/Head/Camera3D/GrabController") as GrabController
+	_items = _kitchen.get_node_or_null("Items") as Node3D
+	_net = _kitchen.get_node_or_null("Net") as KitchenNet
+	_player = _kitchen.get_node_or_null("Players/1") as Player
+	_camera = _kitchen.get_node_or_null("Players/1/Head/Camera3D") as Camera3D
+	_grab = _kitchen.get_node_or_null("Players/1/Head/Camera3D/GrabController") as GrabController
 	var wiring_ok: bool = (
 		_zone != null and _loop != null and _order_system != null
 		and _egg_spawner != null and _plate_spawner != null
 		and _player != null and _camera != null and _grab != null
+		and _items != null and _net != null
 	)
 	if not _check("boot.wiring", wiring_ok, "missing node(s) under Kitchen"):
 		return false
@@ -314,11 +319,11 @@ func _check_deliver(burned_egg: FoodItem, pan: Pan, plate: Plate) -> void:
 		"plates=%d eggs=%d" % [get_tree().get_nodes_in_group("plate").size(), get_tree().get_nodes_in_group("food").size()])
 	_check("deliver.count", _loop.deliveries_made == 1,
 		"deliveries_made=%d" % _loop.deliveries_made)
-	# Spawned items live under the Kitchen root, not under the StaticBody3D
+	# Spawned items live under Kitchen/Items, not under the StaticBody3D
 	# that carries the spawner (Counter / PlateRack).
 	_check("deliver.spawn_parent",
 		new_egg != null and new_plate != null
-		and new_egg.get_parent() == _kitchen and new_plate.get_parent() == _kitchen,
+		and new_egg.get_parent() == _items and new_plate.get_parent() == _items,
 		"egg parent=%s plate parent=%s" % [
 			new_egg.get_parent().name if new_egg else "<none>",
 			new_plate.get_parent().name if new_plate else "<none>"])

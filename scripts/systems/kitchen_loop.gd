@@ -1,15 +1,18 @@
 class_name KitchenLoop
 extends Node
+## Run state: count-up timer, delivery goal, star rating. Authority only
+## advances it; a later task replicates it to clients.
 
 enum State { PLAYING, WON }
 
 @export_node_path("DeliveryZone") var delivery_zone_path: NodePath
-@export_node_path("ItemSpawner") var plate_spawner_path: NodePath
-@export_node_path("ItemSpawner") var egg_spawner_path: NodePath
 
 @export var delivery_goal: int = 3
 @export var star_3_threshold: float = 45.0
 @export var star_2_threshold: float = 70.0
+## Practice: deliveries still respawn items but never end the run, and the
+## timer stays at zero.
+var practice: bool = false
 
 signal game_won(elapsed_time: float, stars: int)
 
@@ -24,7 +27,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if state != State.PLAYING:
+	if not NetSession.is_authority():
+		return
+	if state != State.PLAYING or practice:
 		return
 	elapsed_time += delta
 
@@ -37,25 +42,28 @@ func get_stars() -> int:
 	return 1
 
 
+func reset() -> void:
+	state = State.PLAYING
+	elapsed_time = 0.0
+	deliveries_made = 0
+
+
 func _on_delivered() -> void:
-	if state != State.PLAYING:
+	if not NetSession.is_authority() or state != State.PLAYING:
 		return
 	deliveries_made += 1
-	if deliveries_made >= delivery_goal:
+	if not practice and deliveries_made >= delivery_goal:
 		state = State.WON
 		game_won.emit(elapsed_time, get_stars())
 		return
 	_respawn_items()
 
 
-## Refills each spawner whose slot is empty. Waits one frame first so the
-## items DeliveryZone just queue_free'd are actually gone before the
-## occupancy checks run.
+## Refills each refillable spawner whose slot is empty. Waits one frame so
+## the items DeliveryZone just queue_free'd are gone before the checks run.
 func _respawn_items() -> void:
 	await get_tree().process_frame
-	var plate_spawner: ItemSpawner = get_node(plate_spawner_path)
-	if plate_spawner.is_slot_free():
-		plate_spawner.spawn()
-	var egg_spawner: ItemSpawner = get_node(egg_spawner_path)
-	if egg_spawner.is_slot_free():
-		egg_spawner.spawn()
+	for node in get_tree().get_nodes_in_group(Groups.SPAWNER):
+		var spawner: ItemSpawner = node as ItemSpawner
+		if spawner.refill_on_delivery and spawner.is_slot_free():
+			spawner.spawn()

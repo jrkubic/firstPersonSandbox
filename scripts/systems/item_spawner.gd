@@ -1,31 +1,50 @@
 class_name ItemSpawner
 extends Node3D
+## Produces one item (egg, plate, pan) at its own position. Only the
+## authority spawns; the kitchen's MultiplayerSpawner replicates the result.
+## Every spawner is in the "spawner" group so KitchenLoop can refill them.
 
 @export var item_scene: PackedScene
 @export var spawn_on_ready: bool = true
-## Node that spawned items are added under. Leave empty to use the current
-## scene root; when there is no current scene (e.g. a headless test that
-## instantiates the kitchen directly under root) the spawner's parent is used.
+## Refilled after a delivery when its slot is free (pans are not).
+@export var refill_on_delivery: bool = true
+## Spawns only while the kitchen has at least this many players, so extra
+## ingredient stations appear for bigger groups.
+@export var min_players: int = 1
+## Node spawned items are added under. Leave empty to use the current scene
+## root, falling back to this spawner's parent (headless runs).
 @export_node_path("Node") var spawn_parent_path: NodePath
 ## Radius (m) around the spawn point within which the last spawned item still
 ## counts as occupying this slot. See is_slot_free().
 @export var slot_radius: float = 0.35
 
+## Per-item serial so replicated node names never collide across spawners.
+static var _serial: int = 0
+
 var _last_spawned: Node = null
 
 
 func _ready() -> void:
-	if spawn_on_ready:
+	add_to_group(Groups.SPAWNER)
+	if spawn_on_ready and NetSession.is_authority():
 		call_deferred("spawn")
 
 
 func spawn() -> Node:
-	if item_scene == null:
+	if item_scene == null or not NetSession.is_authority():
+		return null
+	if _player_count() < min_players:
 		return null
 	var instance: Node = item_scene.instantiate()
-	_get_spawn_parent().add_child(instance)
+	_serial += 1
+	instance.name = "%s%d" % [instance.name, _serial]
+	var parent: Node = _get_spawn_parent()
 	if instance is Node3D:
-		(instance as Node3D).global_position = global_position
+		var local: Vector3 = global_position
+		if parent is Node3D:
+			local = (parent as Node3D).global_transform.affine_inverse() * global_position
+		(instance as Node3D).position = local
+	parent.add_child(instance)
 	_last_spawned = instance
 	return instance
 
@@ -42,6 +61,11 @@ func is_slot_free() -> bool:
 	if item == null:
 		return false
 	return item.global_position.distance_to(global_position) > slot_radius
+
+
+func _player_count() -> int:
+	var net: KitchenNet = get_tree().get_first_node_in_group(Groups.KITCHEN_NET) as KitchenNet
+	return net.player_count() if net else 1
 
 
 func _get_spawn_parent() -> Node:

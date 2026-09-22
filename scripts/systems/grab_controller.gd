@@ -186,6 +186,11 @@ func _release() -> void:
 	_held_body = null
 
 
+## Drops whatever this controller holds (peer left, kitchen reset).
+func force_release() -> void:
+	_release()
+
+
 func _throw() -> void:
 	if not is_instance_valid(_held_body):
 		_held_body = null
