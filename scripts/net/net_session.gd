@@ -54,9 +54,11 @@ func local_name() -> String:
 	return "Player %d" % local_peer_id()
 
 
-# --- ENet (localhost tests, LAN) --------------------------------------------
+# --- ENet (localhost tests) -------------------------------------------------
 
 func host_enet(port: int) -> Error:
+	if is_online():
+		return ERR_ALREADY_IN_USE
 	var peer := ENetMultiplayerPeer.new()
 	peer.set_bind_ip("127.0.0.1")
 	var err: Error = peer.create_server(port, MAX_PLAYERS - 1)
@@ -74,6 +76,8 @@ func prepare_client_enet(address: String, port: int) -> void:
 # --- Steam ------------------------------------------------------------------
 
 func host_steam() -> void:
+	if is_online():
+		return
 	if not SteamManager.is_ready():
 		last_message = "Steam not detected"
 		session_ended.emit(last_message)
@@ -95,7 +99,9 @@ func _on_steam_lobby_created(ok: bool, new_lobby_id: int) -> void:
 		session_ended.emit(last_message)
 		return
 	var peer: MultiplayerPeer = SteamManager.new_multiplayer_peer()
-	var err: Error = peer.call("create_host", 0) if peer else ERR_UNAVAILABLE
+	var err: Error = ERR_UNAVAILABLE
+	if peer != null and peer.has_method("create_host"):
+		err = int(peer.call("create_host", 0)) as Error
 	if err != OK:
 		last_message = "Steam host failed (%d)" % err
 		SteamManager.leave_lobby(new_lobby_id)
@@ -135,7 +141,9 @@ func kitchen_ready() -> Error:
 		_pending_enet = []
 	elif _pending_steam_host != 0:
 		peer = SteamManager.new_multiplayer_peer()
-		err = peer.call("create_client", _pending_steam_host, 0) if peer else ERR_UNAVAILABLE
+		err = ERR_UNAVAILABLE
+		if peer != null and peer.has_method("create_client"):
+			err = int(peer.call("create_client", _pending_steam_host, 0)) as Error
 		_pending_steam_host = 0
 	else:
 		return ERR_UNCONFIGURED
