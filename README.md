@@ -69,7 +69,8 @@ Press F3 to toggle. Eight watched values:
 
 ## Automated smoke test
 
-`tests/smoke_test.gd` loads the kitchen headless, drives the items by
+`tests/smoke_test.gd` (entry point; the checks are in
+`tests/smoke_test_body.gd`) loads the kitchen headless, drives the items by
 teleporting them and asserts the whole loop — no editor, display or addons
 needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 `Godot_v4.7.2-stable_win64_console.exe`; `<project>` is the folder holding
@@ -173,7 +174,8 @@ Run this after any meaningful change to verify the slice end-to-end.
   constants), `items/{food_item,pan,plate}.gd`,
   `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,item_spawner,kitchen_loop}.gd`,
   `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup}.gd`
-- `tests/` — `smoke_test.gd` (the headless smoke test) and its `README.md`
+- `tests/` — `smoke_test.gd` (headless smoke test entry point),
+  `smoke_test_body.gd` (its checks) and their `README.md`
 - `docs/plans/` — the design doc and the implementation plan that drove this
   build; the plan ends with the post-slice backlog and its completion notes
 - `docs/WALKTHROUGH.md` — quick inspect-and-debug guide: health checks,

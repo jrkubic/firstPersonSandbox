@@ -2,9 +2,13 @@
 
 ## Headless smoke test
 
-`tests/smoke_test.gd` is a `SceneTree` script that loads `scenes/kitchen.tscn`
-headless, drives the physics items by teleporting them, and asserts the whole
-cook loop end to end. No addons, no editor, no display needed.
+`tests/smoke_test.gd` is a `SceneTree` entry point that loads
+`tests/smoke_test_body.gd`, a `Node` holding the checks, once the autoloads
+exist (a `--script` MainLoop is compiled before them, and any `class_name`
+script it types that names `NetSession` would fail to compile). The body
+loads `scenes/kitchen.tscn` headless, drives the physics items by teleporting
+them, and asserts the whole cook loop end to end. No addons, no editor, no
+display needed.
 
 Run from the project root (Windows console binary shown; any Godot 4.7
 binary works):
