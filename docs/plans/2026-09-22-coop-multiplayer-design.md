@@ -190,6 +190,13 @@ and `ItemSpawner`. Clients see cook state only through synced properties.
 
 ## Known caveats
 
+- **Host re-validation is distance-only.** The host accepts a grab when the
+  item is within `break_distance` of the requester's replicated hold target;
+  it does not re-cast the line-of-sight ray, so a modified client could grab
+  through thin geometry. Fine for friends-only co-op.
+- **Throw direction comes from the replicated head**, one sync tick stale on
+  a fast flick, rather than a client-supplied vector.
+
 - **Held-item lag.** Over Steam relay in one region, round trip is typically
   30–80 ms and reads as a slightly loose grip. Measure on the first real test;
   revisit holder-owned physics only if it feels bad.
