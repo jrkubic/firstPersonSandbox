@@ -33,9 +33,6 @@ enum Reject { NONE, TAKEN, OUT_OF_REACH, NOT_GRABBABLE }
 
 ## Spacing of the assist sphere samples along the aim line, in metres.
 const GRAB_ASSIST_STEP: float = 0.25
-## Slack the host allows beyond grab_range when re-checking a client's
-## request, to absorb one round trip of movement.
-const REACH_TOLERANCE: float = 0.5
 
 ## Physics layers (see [layer_names] in project.godot): 1 = World, 4 = Items.
 const LAYER_WORLD: int = 1
@@ -162,13 +159,19 @@ func _validate_grab(body: RigidBody3D) -> Reject:
 		return Reject.TAKEN
 	if body.is_in_group(Groups.HELD):
 		return Reject.TAKEN
-	if body.global_position.distance_to(camera.global_position) > grab_range + REACH_TOLERANCE:
+	# Reach is the carry radius, not grab_range: _physics_process drops anything
+	# farther than break_distance from hold_target on the next tick, so a grab
+	# accepted beyond it would only flicker held_by for one tick.
+	if body.global_position.distance_to(hold_target.global_position) > break_distance:
 		return Reject.OUT_OF_REACH
 	return Reject.NONE
 
 
 ## True when the call came from this controller's own peer: locally (sender
 ## 0) or over RPC from the player that owns this node.
+## Host code running inside another RPC handler must not call request_* or
+## _server_* (the remote sender id is the client's, so the call is dropped);
+## use force_release() there instead.
 func _sender_is_owner() -> bool:
 	var sender: int = multiplayer.get_remote_sender_id()
 	return sender == 0 or sender == get_multiplayer_authority()
