@@ -62,6 +62,7 @@ var _grab: GrabController
 func _initialize() -> void:
 	Engine.physics_ticks_per_second = PHYSICS_TPS
 	_start_msec = Time.get_ticks_msec()
+	_ensure_autoloads()
 	_run()
 
 
@@ -873,6 +874,22 @@ func _horizontal_distance(a: Node3D, b: Node3D) -> float:
 
 func _first_food() -> FoodItem:
 	return get_first_node_in_group("food") as FoodItem
+
+
+## Autoloads may not be on root yet when a --script SceneTree initialises.
+## Adds them by their autoload names so scripts that reference NetSession /
+## SteamManager resolve either way.
+func _ensure_autoloads() -> void:
+	var autoloads: Array = [
+		["SteamManager", "res://scripts/net/steam_manager.gd"],
+		["NetSession", "res://scripts/net/net_session.gd"],
+	]
+	for entry: Array in autoloads:
+		if root.has_node(entry[0]):
+			continue
+		var node: Node = (load(entry[1]) as GDScript).new()
+		node.name = entry[0]
+		root.add_child(node)
 
 
 ## Simulates a press of an InputMap action the same way a key press reaches

@@ -42,7 +42,9 @@ headless smoke test keep working.
 delivery goal, no end screen. Orders, cooking, delivery and respawn all work
 so people can learn the loop. A lobby panel lists connected Steam names and,
 for the host only, a **Start Run** button. The pause menu gains **Invite
-friends** (`Steam.activateGameOverlayInviteDialog(lobby_id)`).
+friends** (`Steam.activateGameOverlayInviteDialog(lobby_id)`). Start Run and
+Invite friends live in the Escape menu, because the mouse is captured while
+playing.
 
 **Start run.** Host only. `Steam.setLobbyJoinable(lobby, false)`, then
 `KitchenNet.start_run()` resets the persistent kitchen in place:
@@ -63,10 +65,11 @@ stars to everyone; **Back to Practice** (host, same reset with
 held, free their player. Client `server_disconnected`: "Host left" screen,
 back to menu. `Steam.leaveLobby` on every exit path.
 
-**Kitchen changes.** Four `SpawnPoint` markers near the door; room grows to
-roughly 8 × 8 m; a second egg spawner and plate spawner on the counter; the
-pan leaves the scene file and is produced by a third `ItemSpawner` on the
-stove so every item enters through the same path. Still grey-box.
+**Kitchen changes.** Four `SpawnPoint` markers near the door; room stays
+12 × 12 m (already big enough); a second egg spawner and plate spawner on the
+counter; the pan leaves the scene file and is produced by a third
+`ItemSpawner` on the stove so every item enters through the same path. Still
+grey-box.
 
 ## Replication and authority
 

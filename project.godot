@@ -21,6 +21,11 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
+[autoload]
+
+SteamManager="*res://scripts/net/steam_manager.gd"
+NetSession="*res://scripts/net/net_session.gd"
+
 [input]
 
 click={
