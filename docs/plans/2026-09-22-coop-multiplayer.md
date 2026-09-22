@@ -30,7 +30,7 @@
   ```powershell
   & $GODOT --headless --path . --check-only --script res://scripts/<file>.gd
   ```
-  Known limit (found in Task 1): `--check-only` reports `Identifier not found` for any script that names an autoload (`NetSession`, `SteamManager`) because autoloads are not registered in that mode. For those scripts the smoke run is the parse gate. Likewise a `--script` SceneTree test file cannot name autoloads as bare identifiers; `tests/net_test.gd` fetches `root.get_node("NetSession")` into `_session` for that reason. `class_name` types (`KitchenNet`, `Player`, ...) are fine everywhere.
+  Known limit (found in Tasks 1-2): `--check-only` reports `Identifier not found` for any script that names an autoload (`NetSession`, `SteamManager`), and a `--script` SceneTree file cannot compile any `class_name` script that names one either (the MainLoop is compiled before autoloads are registered and eagerly compiles every class it types). So: the smoke run is the parse gate for those scripts, and every headless test is a tiny SceneTree launcher (`tests/smoke_test.gd`, `tests/net_test.gd`) that loads a Node body (`tests/smoke_test_body.gd`, `tests/net_test_body.gd`) from `_initialize`, by which time the autoloads exist. Bodies may name autoloads and class_name types freely.
 - Commit after every task with the message given. Add the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - This plan edits `.tscn` files by hand. Do not have the Godot editor open on the project while doing so.
 
@@ -1135,7 +1135,7 @@ git commit -m "Restructure kitchen: Players/Items containers, spawn points, Kitc
 Each `Player` is owned by the peer it is named after. Only the owner reads input, runs movement, and has the live camera; everyone else sees a capsule driven by a `MultiplayerSynchronizer`. This task also lands the two-process ENet test harness that every later task extends.
 
 **Files:**
-- Create: `tests/net_test.gd`
+- Create: `tests/net_test.gd` (launcher), `tests/net_test_body.gd` (checks)
 - Create: `tests/run_net_test.ps1`
 - Create: `scenes/sync/player_sync.tres`
 - Modify: `scripts/player.gd` (rewrite)
@@ -1174,13 +1174,34 @@ Write-Host "NET TEST PASSED"
 exit 0
 ```
 
-**Step 2: Create `tests/net_test.gd` (the failing test)**
+**Step 2: Create the launcher `tests/net_test.gd`**
 
-This is the complete scaffold. Later tasks insert extra checks at the marked `# --- Task N ---` lines and bump `EXPECTED_CHECKS`.
+Same split as `tests/smoke_test.gd` (see its header): a `--script` MainLoop is compiled before autoloads exist and eagerly compiles every `class_name` it types, and those scripts name `NetSession`. So the entry point is a tiny launcher and the checks live in a Node body loaded once the autoloads are on `root`.
 
 ```gdscript
 extends SceneTree
-## Two-process headless replication test over ENet on localhost.
+## Two-process ENet replication test entry point. Run via tests/run_net_test.ps1
+## or by hand (see net_test_body.gd). Split from the body for the same reason
+## as smoke_test.gd: the body names class_name scripts that name autoloads.
+
+const BODY_SCRIPT: String = "res://tests/net_test_body.gd"
+
+
+func _initialize() -> void:
+	var body_script: GDScript = load(BODY_SCRIPT) as GDScript
+	var body: Node = body_script.new() as Node
+	body.name = "NetTest"
+	get_tree().root.add_child(body)
+```
+
+**Step 2b: Create the body `tests/net_test_body.gd` (the failing test)**
+
+This is the complete scaffold, written as a Node like `tests/smoke_test_body.gd`. Later tasks insert extra checks into `tests/net_test_body.gd` at the marked `# --- Task N ---` lines and bump `EXPECTED_CHECKS`.
+
+```gdscript
+extends Node
+## Two-process headless replication test over ENet on localhost (the checks;
+## tests/net_test.gd is the --script launcher).
 ##
 ## Run both halves with tests/run_net_test.ps1, or by hand in two consoles:
 ##   Godot_console.exe --headless --path . --script res://tests/net_test.gd -- role=host port=7777
@@ -1220,32 +1241,29 @@ var _loop: KitchenLoop
 var _client_id: int = 0
 var _client_gone: bool = false
 var _connected: bool = false
-# The NetSession autoload. A --script SceneTree is compiled before autoload
-# globals exist, so it cannot name NetSession directly; fetch it from root.
-var _session: Node
 
 
-func _initialize() -> void:
+func _ready() -> void:
+	# Keep the watchdog ticking even if something pauses the tree.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_parse_args()
 	Engine.physics_ticks_per_second = PHYSICS_TPS
 	_start_msec = Time.get_ticks_msec()
 	_ensure_autoloads()
-	_session = root.get_node("NetSession")
+	# Deferred: root is still mid-add_child during _ready.
 	if _role == "host":
-		_run_host()
+		_run_host.call_deferred()
 	else:
-		_run_client()
+		_run_client.call_deferred()
 
 
-func _process(_delta: float) -> bool:
+func _process(_delta: float) -> void:
 	if _finished:
-		return false
+		return
 	if float(Time.get_ticks_msec() - _start_msec) / 1000.0 > WATCHDOG_SECONDS:
 		print("FAIL %s.watchdog: did not finish within %.0f s" % [_role, WATCHDOG_SECONDS])
 		_failed += 1
 		_finish()
-		return true
-	return false
 
 
 # ---------------------------------------------------------------------------
@@ -1253,7 +1271,7 @@ func _process(_delta: float) -> bool:
 # ---------------------------------------------------------------------------
 
 func _run_host() -> void:
-	var err: Error = _session.host_enet(_port)
+	var err: Error = NetSession.host_enet(_port)
 	if not _check("host.listen", err == OK, "create_server returned %d" % err):
 		_finish()
 		return
@@ -1278,7 +1296,7 @@ func _run_host() -> void:
 
 	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
 	_check("host.client_left", gone >= 0, "client never disconnected")
-	_session.leave()
+	NetSession.leave()
 	_finish()
 
 
@@ -1288,7 +1306,7 @@ func _run_host() -> void:
 
 func _run_client() -> void:
 	multiplayer.connected_to_server.connect(func() -> void: _connected = true)
-	_session.prepare_client_enet("127.0.0.1", _port)
+	NetSession.prepare_client_enet("127.0.0.1", _port)
 	_load_kitchen()  # KitchenNet._ready -> NetSession.kitchen_ready() connects
 	var connected: int = await _wait_until(func() -> bool: return _connected, PHYSICS_TPS * 20)
 	if not _check("client.connected", connected >= 0, "connected_to_server never fired"):
@@ -1316,7 +1334,7 @@ func _run_client() -> void:
 
 
 func _finish_client() -> void:
-	_session.leave()
+	NetSession.leave()
 	_finish()
 
 
@@ -1327,8 +1345,8 @@ func _finish_client() -> void:
 func _load_kitchen() -> void:
 	var packed: PackedScene = load(KITCHEN_SCENE)
 	_kitchen = packed.instantiate() as Node3D
-	root.add_child(_kitchen)
-	current_scene = _kitchen
+	get_tree().root.add_child(_kitchen)
+	get_tree().current_scene = _kitchen
 	_net = _kitchen.get_node("Net") as KitchenNet
 	_loop = _kitchen.get_node("KitchenLoop") as KitchenLoop
 
@@ -1348,14 +1366,14 @@ func _parse_args() -> void:
 func _ensure_autoloads() -> void:
 	var autoloads: Array = [
 		["SteamManager", "res://scripts/net/steam_manager.gd"],
-		["NetSession", "res://scripts/net/net_session.gd"],
+		["NetSession", "res://scripts/net/netNetSession.gd"],
 	]
 	for entry: Array in autoloads:
-		if root.has_node(entry[0]):
+		if get_tree().root.has_node(entry[0]):
 			continue
 		var node: Node = (load(entry[1]) as GDScript).new()
 		node.name = entry[0]
-		root.add_child(node)
+		get_tree().root.add_child(node)
 
 
 func _finish() -> void:
@@ -1366,29 +1384,29 @@ func _finish() -> void:
 		_failed += 1
 		print("FAIL %s.summary.count: %d checks ran, expected %d" % [_role, total, expected])
 	print("SUMMARY %s: %d passed, %d failed" % [_role, _passed, _failed])
-	quit(1 if _failed > 0 else 0)
+	get_tree().quit(1 if _failed > 0 else 0)
 
 
-func _check(name: String, ok: bool, detail: String = "") -> bool:
+func _check(check_name: String, ok: bool, detail: String = "") -> bool:
 	if ok:
 		_passed += 1
-		print("PASS %s" % name)
+		print("PASS %s" % check_name)
 	else:
 		_failed += 1
-		print("FAIL %s: %s" % [name, detail])
+		print("FAIL %s: %s" % [check_name, detail])
 	return ok
 
 
 func _step(frames: int) -> void:
 	for i in range(frames):
-		await physics_frame
+		await get_tree().physics_frame
 
 
 func _wait_until(pred: Callable, max_frames: int) -> int:
 	for i in range(max_frames):
 		if pred.call():
 			return i
-		await physics_frame
+		await get_tree().physics_frame
 	if pred.call():
 		return max_frames
 	return -1
@@ -1415,7 +1433,7 @@ func _cook_until_cooked(egg: FoodItem, pan: Pan) -> bool:
 			return true
 		if i % STIR_INTERVAL == 0 and _horizontal_distance(egg, pan) > STIR_DRIFT:
 			_teleport(egg, pan.global_position + EGG_IN_PAN_OFFSET)
-		await physics_frame
+		await get_tree().physics_frame
 	return egg.state == FoodItem.State.COOKED
 ```
 
@@ -1725,13 +1743,13 @@ Every item (egg, pan, plate) gets a `NetBody` child that the host samples and th
 
 **Step 1: Add the failing checks to `tests/net_test.gd`**
 
-Set `EXPECTED_CHECKS` to `{"host": 5, "client": 11}`.
+In `tests/net_test_body.gd`, set `EXPECTED_CHECKS` to `{"host": 5, "client": 11}`.
 
 Replace the host line `# --- Task 4: cook the egg for the client to watch ---` with:
 
 ```gdscript
-	var egg: FoodItem = get_first_node_in_group("food") as FoodItem
-	var pan: Pan = get_first_node_in_group("pan") as Pan
+	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+	var pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
 	var cooked: bool = await _cook_until_cooked(egg, pan)
 	_check("host.egg_cooked", cooked, "state=%s" % egg.state_name())
 	# Park it on the counter so it stops cooking while the client reacts.
@@ -1742,11 +1760,11 @@ Replace the client line `# --- Task 4: item replication checks ---` with:
 
 ```gdscript
 	var egg_seen: int = await _wait_until(
-		func() -> bool: return get_first_node_in_group("food") != null, PHYSICS_TPS * 5)
+		func() -> bool: return get_tree().get_first_node_in_group("food") != null, PHYSICS_TPS * 5)
 	if not _check("client.sees_egg", egg_seen >= 0, "no food node replicated in 5 s"):
 		_finish_client()
 		return
-	var egg: FoodItem = get_first_node_in_group("food") as FoodItem
+	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
 	_check("client.egg_frozen", egg.freeze, "client egg is simulating physics")
 	_check("client.egg_parent", egg.get_parent() == _kitchen.get_node("Items"),
 		"parent=%s" % egg.get_parent().name)
@@ -2023,12 +2041,12 @@ The owning peer still aims locally (ray + assist against its frozen copies), but
 
 **Step 1: Add the failing checks to `tests/net_test.gd`**
 
-Set `EXPECTED_CHECKS` to `{"host": 8, "client": 17}`.
+In `tests/net_test_body.gd`, set `EXPECTED_CHECKS` to `{"host": 8, "client": 17}`.
 
 Replace the host line `# --- Task 5: host holds the plate before anyone joins ---` with:
 
 ```gdscript
-	var plate: Plate = get_first_node_in_group("plate") as Plate
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
 	var host_grab: GrabController = _net.get_player(1).grab_controller
 	host_grab.request_grab(plate.get_path())
 	await _step(2)
@@ -2055,10 +2073,10 @@ Replace the client line `# --- Task 5: grab / release through the host ---` with
 
 ```gdscript
 	var plate_seen: int = await _wait_until(func() -> bool:
-		var p: Node = get_first_node_in_group("plate")
+		var p: Node = get_tree().get_first_node_in_group("plate")
 		return p != null and NetBody.of(p) != null and NetBody.of(p).held_by == 1, PHYSICS_TPS * 5)
 	_check("client.late_join_held_by", plate_seen >= 0, "plate held_by never became 1")
-	var plate: Plate = get_first_node_in_group("plate") as Plate
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
 	_check("client.late_join_held_group", plate != null and plate.is_in_group("held"),
 		"plate not in 'held' group on the client")
 
@@ -2453,7 +2471,7 @@ git commit -m "Grab, release and throw as host-validated requests; held_by repli
 
 **Step 1: Add the failing checks to `tests/net_test.gd`**
 
-Set `EXPECTED_CHECKS` to `{"host": 11, "client": 22}`.
+In `tests/net_test_body.gd`, set `EXPECTED_CHECKS` to `{"host": 11, "client": 22}`.
 
 Replace the host line `# --- Task 6: deliver, then start the run ---` with:
 
@@ -2470,9 +2488,9 @@ Replace the host line `# --- Task 6: deliver, then start the run ---` with:
 	await _net.start_run()
 	_check("host.run_started",
 		_net.mode == KitchenNet.Mode.RUN and _loop.deliveries_made == 0
-		and get_nodes_in_group("food").size() == 2 and get_nodes_in_group("plate").size() == 2,
+		and get_tree().get_nodes_in_group("food").size() == 2 and get_tree().get_nodes_in_group("plate").size() == 2,
 		"mode=%d deliveries=%d eggs=%d plates=%d" % [_net.mode, _loop.deliveries_made,
-			get_nodes_in_group("food").size(), get_nodes_in_group("plate").size()])
+			get_tree().get_nodes_in_group("food").size(), get_tree().get_nodes_in_group("plate").size()])
 ```
 
 (Two eggs and two plates: with two players in the kitchen the `min_players = 2` spawners are live.)
@@ -2482,8 +2500,8 @@ Replace the client line `# --- Task 6: delivery, mode, timer, teleport ---` with
 ```gdscript
 	_check("client.practice_mode_on_join", _net.mode == KitchenNet.Mode.PRACTICE,
 		"mode=%d" % _net.mode)
-	_check("client.names_synced", _session.peer_names.has(1) and _session.peer_names.has(me),
-		"names=%s" % str(_session.peer_names))
+	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
+		"names=%s" % str(NetSession.peer_names))
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
 	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
