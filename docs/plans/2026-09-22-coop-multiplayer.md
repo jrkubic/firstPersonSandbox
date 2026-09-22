@@ -30,6 +30,7 @@
   ```powershell
   & $GODOT --headless --path . --check-only --script res://scripts/<file>.gd
   ```
+  Known limit (found in Task 1): `--check-only` reports `Identifier not found` for any script that names an autoload (`NetSession`, `SteamManager`) because autoloads are not registered in that mode. For those scripts the smoke run is the parse gate. Likewise a `--script` SceneTree test file cannot name autoloads as bare identifiers; `tests/net_test.gd` fetches `root.get_node("NetSession")` into `_session` for that reason. `class_name` types (`KitchenNet`, `Player`, ...) are fine everywhere.
 - Commit after every task with the message given. Add the trailer `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - This plan edits `.tscn` files by hand. Do not have the Godot editor open on the project while doing so.
 
@@ -1219,6 +1220,9 @@ var _loop: KitchenLoop
 var _client_id: int = 0
 var _client_gone: bool = false
 var _connected: bool = false
+# The NetSession autoload. A --script SceneTree is compiled before autoload
+# globals exist, so it cannot name NetSession directly; fetch it from root.
+var _session: Node
 
 
 func _initialize() -> void:
@@ -1226,6 +1230,7 @@ func _initialize() -> void:
 	Engine.physics_ticks_per_second = PHYSICS_TPS
 	_start_msec = Time.get_ticks_msec()
 	_ensure_autoloads()
+	_session = root.get_node("NetSession")
 	if _role == "host":
 		_run_host()
 	else:
@@ -1248,7 +1253,7 @@ func _process(_delta: float) -> bool:
 # ---------------------------------------------------------------------------
 
 func _run_host() -> void:
-	var err: Error = NetSession.host_enet(_port)
+	var err: Error = _session.host_enet(_port)
 	if not _check("host.listen", err == OK, "create_server returned %d" % err):
 		_finish()
 		return
@@ -1273,7 +1278,7 @@ func _run_host() -> void:
 
 	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
 	_check("host.client_left", gone >= 0, "client never disconnected")
-	NetSession.leave()
+	_session.leave()
 	_finish()
 
 
@@ -1283,7 +1288,7 @@ func _run_host() -> void:
 
 func _run_client() -> void:
 	multiplayer.connected_to_server.connect(func() -> void: _connected = true)
-	NetSession.prepare_client_enet("127.0.0.1", _port)
+	_session.prepare_client_enet("127.0.0.1", _port)
 	_load_kitchen()  # KitchenNet._ready -> NetSession.kitchen_ready() connects
 	var connected: int = await _wait_until(func() -> bool: return _connected, PHYSICS_TPS * 20)
 	if not _check("client.connected", connected >= 0, "connected_to_server never fired"):
@@ -1311,7 +1316,7 @@ func _run_client() -> void:
 
 
 func _finish_client() -> void:
-	NetSession.leave()
+	_session.leave()
 	_finish()
 
 
@@ -2477,8 +2482,8 @@ Replace the client line `# --- Task 6: delivery, mode, timer, teleport ---` with
 ```gdscript
 	_check("client.practice_mode_on_join", _net.mode == KitchenNet.Mode.PRACTICE,
 		"mode=%d" % _net.mode)
-	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
-		"names=%s" % str(NetSession.peer_names))
+	_check("client.names_synced", _session.peer_names.has(1) and _session.peer_names.has(me),
+		"names=%s" % str(_session.peer_names))
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
 	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
