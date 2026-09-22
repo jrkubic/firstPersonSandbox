@@ -5,8 +5,8 @@ extends RigidBody3D
 
 
 func _ready() -> void:
-	add_to_group("grabbable")
-	add_to_group("pan")
+	add_to_group(Groups.GRABBABLE)
+	add_to_group(Groups.PAN)
 
 
 func is_on_stove() -> bool:

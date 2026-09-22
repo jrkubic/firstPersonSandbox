@@ -22,7 +22,7 @@ func _physics_process(_delta: float) -> void:
 		if not is_instance_valid(plate):
 			_plates_inside.erase(plate)
 			continue
-		if plate.is_in_group("held"):
+		if plate.is_in_group(Groups.HELD):
 			continue
 		if _has_held_contents(plate):
 			continue
@@ -32,7 +32,7 @@ func _physics_process(_delta: float) -> void:
 
 func _has_held_contents(plate: Plate) -> bool:
 	for food in plate.get_contents():
-		if is_instance_valid(food) and food.is_in_group("held"):
+		if is_instance_valid(food) and food.is_in_group(Groups.HELD):
 			return true
 	return false
 

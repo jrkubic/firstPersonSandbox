@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/items/plate.gd" id="1_plate"]
 [ext_resource type="Script" path="res://scripts/systems/food_container.gd" id="2_food_container"]
@@ -16,10 +16,20 @@ top_radius = 0.22
 bottom_radius = 0.22
 height = 0.03
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_plate_rim"]
+size = Vector3(0.115, 0.025, 0.01)
+
+[sub_resource type="TorusMesh" id="TorusMesh_plate_rim"]
+material = SubResource("StandardMaterial3D_plate")
+inner_radius = 0.2075
+outer_radius = 0.2325
+
 [sub_resource type="BoxShape3D" id="BoxShape3D_food_container"]
 size = Vector3(0.4, 0.15, 0.4)
 
 [node name="Plate" type="RigidBody3D"]
+collision_layer = 4
+collision_mask = 7
 mass = 0.3
 script = ExtResource("1_plate")
 
@@ -29,7 +39,61 @@ shape = SubResource("CylinderShape3D_plate")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = SubResource("CylinderMesh_plate")
 
+[node name="RimMesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0275, 0)
+mesh = SubResource("TorusMesh_plate_rim")
+
+[node name="RimSegment1" type="CollisionShape3D" parent="."]
+transform = Transform3D(0, 0, 1, 0, 1, 0, -1, 0, 0, 0.22, 0.0275, 0)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment2" type="CollisionShape3D" parent="."]
+transform = Transform3D(0.5, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, 0.5, 0.19052559, 0.0275, 0.11)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment3" type="CollisionShape3D" parent="."]
+transform = Transform3D(0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, 0.8660254, 0.11, 0.0275, 0.19052559)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment4" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0275, 0.22)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment5" type="CollisionShape3D" parent="."]
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, -0.11, 0.0275, 0.19052559)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment6" type="CollisionShape3D" parent="."]
+transform = Transform3D(0.5, 0, -0.8660254, 0, 1, 0, 0.8660254, 0, 0.5, -0.19052559, 0.0275, 0.11)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment7" type="CollisionShape3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -0.22, 0.0275, 0)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment8" type="CollisionShape3D" parent="."]
+transform = Transform3D(-0.5, 0, -0.8660254, 0, 1, 0, 0.8660254, 0, -0.5, -0.19052559, 0.0275, -0.11)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment9" type="CollisionShape3D" parent="."]
+transform = Transform3D(-0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, -0.8660254, -0.11, 0.0275, -0.19052559)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment10" type="CollisionShape3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0.0275, -0.22)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment11" type="CollisionShape3D" parent="."]
+transform = Transform3D(-0.8660254, 0, 0.5, 0, 1, 0, -0.5, 0, -0.8660254, 0.11, 0.0275, -0.19052559)
+shape = SubResource("BoxShape3D_plate_rim")
+
+[node name="RimSegment12" type="CollisionShape3D" parent="."]
+transform = Transform3D(-0.5, 0, 0.8660254, 0, 1, 0, -0.8660254, 0, -0.5, 0.19052559, 0.0275, -0.11)
+shape = SubResource("BoxShape3D_plate_rim")
+
 [node name="FoodContainer" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 4
 script = ExtResource("2_food_container")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="FoodContainer"]

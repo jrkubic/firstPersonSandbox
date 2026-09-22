@@ -48,10 +48,14 @@ func _on_delivered() -> void:
 	_respawn_items()
 
 
+## Refills each spawner whose slot is empty. Waits one frame first so the
+## items DeliveryZone just queue_free'd are actually gone before the
+## occupancy checks run.
 func _respawn_items() -> void:
-	var plate_spawner: ItemSpawner = get_node(plate_spawner_path)
-	plate_spawner.spawn()
 	await get_tree().process_frame
+	var plate_spawner: ItemSpawner = get_node(plate_spawner_path)
+	if plate_spawner.is_slot_free():
+		plate_spawner.spawn()
 	var egg_spawner: ItemSpawner = get_node(egg_spawner_path)
-	if get_tree().get_nodes_in_group("food").is_empty():
+	if egg_spawner.is_slot_free():
 		egg_spawner.spawn()

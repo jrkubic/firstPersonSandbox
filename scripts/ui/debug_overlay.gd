@@ -7,7 +7,7 @@ var _watched: Dictionary = {}
 
 func _ready() -> void:
 	visible = false
-	add_to_group("debug_overlay")
+	add_to_group(Groups.DEBUG_OVERLAY)
 
 
 func _unhandled_input(event: InputEvent) -> void:

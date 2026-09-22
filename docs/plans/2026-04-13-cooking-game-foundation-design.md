@@ -219,3 +219,7 @@ slice makes unit tests either useless (too much mocking) or overkill
 
 Revisit automated testing once the loop has regression-worthy
 complexity (multiple recipes, scoring, co-op sync).
+
+**Update 2026-09-11:** the loop now has that complexity (timer, goal, stars,
+rims, layers, crouch, grab assist), so `tests/smoke_test.gd` runs the whole
+cook loop headless with real physics; see `tests/README.md`.

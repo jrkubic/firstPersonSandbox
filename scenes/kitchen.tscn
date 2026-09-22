@@ -189,6 +189,7 @@ mesh = SubResource("BoxMesh_counter")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 script = ExtResource("9_item_spawner")
 item_scene = ExtResource("3_egg")
+spawn_parent_path = NodePath("../..")
 
 [node name="Stove" type="StaticBody3D" parent="." unique_id=682082954 groups=["stove"]]
 
@@ -215,6 +216,7 @@ mesh = SubResource("BoxMesh_plate_rack")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
 script = ExtResource("9_item_spawner")
 item_scene = ExtResource("5_plate")
+spawn_parent_path = NodePath("../..")
 
 [node name="OrderSystem" type="Node" parent="." unique_id=832505118]
 script = ExtResource("6_order_system")
@@ -237,6 +239,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 mesh = SubResource("BoxMesh_pass")
 
 [node name="DeliveryZone" type="Area3D" parent="Pass" unique_id=1830208917]
+collision_layer = 0
+collision_mask = 4
 script = ExtResource("7_delivery_zone")
 order_system_path = NodePath("../../OrderSystem")
 
@@ -270,8 +274,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0605681, 0)
 
 [node name="HUD" parent="." unique_id=256881836 instance=ExtResource("12_hud")]
 delivery_zone_path = NodePath("../Pass/DeliveryZone")
-popup_scene = ExtResource("13_score_popup")
 kitchen_loop_path = NodePath("../KitchenLoop")
+popup_scene = ExtResource("13_score_popup")
 
-[node name="EndScreen" parent="." instance=ExtResource("14_end_screen")]
+[node name="EndScreen" parent="." unique_id=2052434382 instance=ExtResource("14_end_screen")]
 kitchen_loop_path = NodePath("../KitchenLoop")

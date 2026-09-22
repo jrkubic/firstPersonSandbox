@@ -14,10 +14,10 @@ func is_on_stove() -> bool:
 
 
 func _on_body_entered(body: Node) -> void:
-	if body.is_in_group("stove"):
+	if body.is_in_group(Groups.STOVE):
 		_overlapping_stoves += 1
 
 
 func _on_body_exited(body: Node) -> void:
-	if body.is_in_group("stove"):
+	if body.is_in_group(Groups.STOVE):
 		_overlapping_stoves = max(0, _overlapping_stoves - 1)

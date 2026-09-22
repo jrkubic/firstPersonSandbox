@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bixbe2raf18an"]
 
 [ext_resource type="Script" uid="uid://bgjbhst6ro515" path="res://scripts/player.gd" id="1_player"]
-[ext_resource type="Script" path="res://scripts/systems/grab_controller.gd" id="2_grab"]
+[ext_resource type="Script" uid="uid://cpr43gwimylbx" path="res://scripts/systems/grab_controller.gd" id="2_grab"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
 radius = 0.4
@@ -14,6 +14,8 @@ material = SubResource("StandardMaterial3D_player")
 radius = 0.4
 
 [node name="Player" type="CharacterBody3D" unique_id=144554841]
+collision_layer = 2
+collision_mask = 5
 script = ExtResource("1_player")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=259202456]
@@ -30,33 +32,30 @@ mesh = SubResource("CapsuleMesh_player")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 
 [node name="Camera3D" type="Camera3D" parent="Head" unique_id=390421732]
-fov = 90.0
+fov = 80.0
 
-[node name="HoldTarget" type="Node3D" parent="Head/Camera3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, -0.35, -0.6)
+[node name="HoldTarget" type="Node3D" parent="Head/Camera3D" unique_id=1922461768]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, -0.3, -1.2)
 
-[node name="GrabController" type="Node3D" parent="Head/Camera3D"]
+[node name="GrabController" type="Node3D" parent="Head/Camera3D" unique_id=38650737]
 script = ExtResource("2_grab")
 hold_target_path = NodePath("../HoldTarget")
 camera_path = NodePath("..")
 exclude_body_path = NodePath("../../..")
 
-[node name="Crosshair" type="CanvasLayer" parent="."]
+[node name="Crosshair" type="CanvasLayer" parent="." unique_id=493851183]
 
-[node name="Label" type="Label" parent="Crosshair"]
+[node name="Dot" type="ColorRect" parent="Crosshair" unique_id=1088522413]
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -8.0
-offset_top = -14.0
-offset_right = 8.0
-offset_bottom = 14.0
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_font_sizes/font_size = 24
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-text = "+"
-horizontal_alignment = 1
-vertical_alignment = 1
+mouse_filter = 2
+color = Color(1, 1, 1, 0.85)

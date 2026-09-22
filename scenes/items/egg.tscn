@@ -10,7 +10,10 @@ radius = 0.07
 height = 0.14
 
 [node name="Egg" type="RigidBody3D"]
+collision_layer = 4
+collision_mask = 7
 mass = 0.1
+continuous_cd = true
 script = ExtResource("1_food")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]

@@ -20,9 +20,18 @@ func _physics_process(delta: float) -> void:
 	for food in _foods:
 		if not is_instance_valid(food):
 			continue
-		if food.is_in_group("held"):
+		if food.is_in_group(Groups.HELD):
+			continue
+		# Food resting on a plate (FoodContainer) is served, not cooking, even
+		# if the plate is set down on the pan.
+		if food.is_contained():
 			continue
 		food.tick_cook(delta)
+
+
+## True while the food overlaps this slot's volume (ticked or not).
+func has_food(food: FoodItem) -> bool:
+	return _foods.has(food)
 
 
 func _on_body_entered(body: Node) -> void:
