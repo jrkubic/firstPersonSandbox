@@ -1,5 +1,14 @@
 class_name GrabController
 extends Node3D
+## Grabs, carries, releases and throws RigidBody3D items.
+##
+## Aiming (the centre ray and the sphere-sweep assist) runs on the peer that
+## owns the player. Taking an item is a request to the host, who owns every
+## item: a direct call when this peer is the host, an RPC otherwise. The host
+## validates, takes the item exactly as in solo play (gravity off, "held"
+## group, collision exception with the holder's body) and records the holder
+## in NetBody.held_by, which replicates to everyone. On a client, is_holding()
+## reads that property back rather than any local state.
 
 @export var grab_range: float = 4.0
 @export var break_distance: float = 1.75
@@ -20,16 +29,22 @@ extends Node3D
 ## Radius of the assist sphere in metres. Larger is more forgiving.
 @export var grab_assist_radius: float = 0.12
 
+enum Reject { NONE, TAKEN, OUT_OF_REACH, NOT_GRABBABLE }
+
 ## Spacing of the assist sphere samples along the aim line, in metres.
 const GRAB_ASSIST_STEP: float = 0.25
+## Slack the host allows beyond grab_range when re-checking a client's
+## request, to absorb one round trip of movement.
+const REACH_TOLERANCE: float = 0.5
 
 ## Physics layers (see [layer_names] in project.godot): 1 = World, 4 = Items.
-## Grab queries only consider Items; the line-of-sight ray also has to see
-## World so walls and counters can block a grab.
 const LAYER_WORLD: int = 1
 const LAYER_ITEMS: int = 4
 
-var _held_body: RigidBody3D = null
+## Why the last request from this peer was refused (hook for a "taken" cue).
+var last_reject: Reject = Reject.NONE
+
+var _held_body: RigidBody3D = null  # host side only
 var _cached_gravity_scale: float = 1.0
 
 @onready var hold_target: Node3D = get_node(hold_target_path)
@@ -42,28 +57,178 @@ var _cached_gravity_scale: float = 1.0
 
 
 func is_holding() -> bool:
-	return is_instance_valid(_held_body)
+	return _current_held() != null
 
 
 func held_body_name() -> String:
-	if not is_instance_valid(_held_body):
-		return "<none>"
-	return _held_body.name
+	var body: RigidBody3D = _current_held()
+	return body.name if body else "<none>"
+
+
+## Host: the body this controller is pulling. Client: the item whose
+## NetBody.held_by names this controller's peer.
+func _current_held() -> RigidBody3D:
+	if NetSession.is_authority():
+		if not is_instance_valid(_held_body):
+			_held_body = null
+		return _held_body
+	var me: int = get_multiplayer_authority()
+	for node in get_tree().get_nodes_in_group(Groups.GRABBABLE):
+		var net: NetBody = NetBody.of(node)
+		if net != null and net.held_by == me:
+			return node as RigidBody3D
+	return null
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
-		return  # authority propagates from Player: only the owning peer grabs
+		return
 	if event.is_action_pressed("interact"):
 		if is_holding():
-			_release()
+			request_release()
 		else:
-			_try_grab()
+			var candidate: RigidBody3D = _find_ray_candidate()
+			if candidate == null and grab_assist_enabled:
+				candidate = _find_assist_candidate()
+			if candidate != null:
+				request_grab(candidate.get_path())
 	elif event.is_action_pressed("throw") and is_holding():
+		request_throw()
+
+
+# --- Requests (owning peer) --------------------------------------------------
+
+func request_grab(item_path: NodePath) -> void:
+	last_reject = Reject.NONE
+	if NetSession.is_authority():
+		_server_grab(item_path)
+	else:
+		_server_grab.rpc_id(1, item_path)
+
+
+func request_release() -> void:
+	if NetSession.is_authority():
+		_server_release()
+	else:
+		_server_release.rpc_id(1)
+
+
+func request_throw() -> void:
+	if NetSession.is_authority():
+		_server_throw()
+	else:
+		_server_throw.rpc_id(1)
+
+
+# --- Host side ---------------------------------------------------------------
+
+@rpc("any_peer", "reliable")
+func _server_grab(item_path: NodePath) -> void:
+	if not NetSession.is_authority() or not _sender_is_owner():
+		return
+	if is_holding():
+		return
+	var body: RigidBody3D = get_node_or_null(item_path) as RigidBody3D
+	var reason: Reject = _validate_grab(body)
+	if reason != Reject.NONE:
+		_notify_rejected(reason)
+		return
+	_take(body)
+
+
+@rpc("any_peer", "reliable")
+func _server_release() -> void:
+	if NetSession.is_authority() and _sender_is_owner():
+		_release()
+
+
+@rpc("any_peer", "reliable")
+func _server_throw() -> void:
+	if NetSession.is_authority() and _sender_is_owner():
 		_throw()
 
 
+## Drops whatever this controller holds (peer left, kitchen reset).
+func force_release() -> void:
+	if NetSession.is_authority():
+		_release()
+
+
+func _validate_grab(body: RigidBody3D) -> Reject:
+	if body == null or not body.is_in_group(Groups.GRABBABLE):
+		return Reject.NOT_GRABBABLE
+	var net: NetBody = NetBody.of(body)
+	if net != null and net.held_by != NetBody.NOBODY:
+		return Reject.TAKEN
+	if body.is_in_group(Groups.HELD):
+		return Reject.TAKEN
+	if body.global_position.distance_to(camera.global_position) > grab_range + REACH_TOLERANCE:
+		return Reject.OUT_OF_REACH
+	return Reject.NONE
+
+
+## True when the call came from this controller's own peer: locally (sender
+## 0) or over RPC from the player that owns this node.
+func _sender_is_owner() -> bool:
+	var sender: int = multiplayer.get_remote_sender_id()
+	return sender == 0 or sender == get_multiplayer_authority()
+
+
+func _notify_rejected(reason: Reject) -> void:
+	var owner_peer: int = get_multiplayer_authority()
+	if owner_peer == multiplayer.get_unique_id():
+		_on_grab_rejected(reason)
+	else:
+		_on_grab_rejected.rpc_id(owner_peer, reason)
+
+
+@rpc("any_peer", "reliable")
+func _on_grab_rejected(reason: int) -> void:
+	var sender: int = multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != 1:
+		return
+	last_reject = reason as Reject
+
+
+func _take(body: RigidBody3D) -> void:
+	_cached_gravity_scale = body.gravity_scale
+	_held_body = body
+	body.gravity_scale = 0.0
+	body.add_to_group(Groups.HELD)
+	if _exclude_body:
+		body.add_collision_exception_with(_exclude_body)
+	var net: NetBody = NetBody.of(body)
+	if net != null:
+		net.held_by = get_multiplayer_authority()
+
+
+func _release() -> void:
+	if is_instance_valid(_held_body):
+		_held_body.gravity_scale = _cached_gravity_scale
+		_held_body.remove_from_group(Groups.HELD)
+		if _exclude_body:
+			_held_body.remove_collision_exception_with(_exclude_body)
+		var net: NetBody = NetBody.of(_held_body)
+		if net != null:
+			net.held_by = NetBody.NOBODY
+	_held_body = null
+
+
+func _throw() -> void:
+	if not is_instance_valid(_held_body):
+		_held_body = null
+		return
+	var body: RigidBody3D = _held_body
+	var forward: Vector3 = -camera.global_transform.basis.z
+	_release()
+	body.linear_velocity = forward * throw_speed
+
+
+# --- Carrying (host physics) -------------------------------------------------
+
 func _physics_process(_delta: float) -> void:
+	if not NetSession.is_authority():
+		return
 	if not is_instance_valid(_held_body):
 		_held_body = null
 		return
@@ -91,19 +256,7 @@ func _apply_orientation_control() -> void:
 	_held_body.angular_velocity = desired_angular
 
 
-func _try_grab() -> void:
-	var candidate: RigidBody3D = _find_ray_candidate()
-	if candidate == null and grab_assist_enabled:
-		candidate = _find_assist_candidate()
-	if candidate == null:
-		return
-	_cached_gravity_scale = candidate.gravity_scale
-	_held_body = candidate
-	_held_body.gravity_scale = 0.0
-	_held_body.add_to_group(Groups.HELD)
-	if _exclude_body:
-		_held_body.add_collision_exception_with(_exclude_body)
-
+# --- Aiming (owning peer) ----------------------------------------------------
 
 ## Precise attempt: a single ray from the camera along its forward axis.
 ## Returns the grabbable body it hits, or null.
@@ -177,27 +330,3 @@ func _has_line_of_sight(from: Vector3, body: RigidBody3D) -> bool:
 		exclude.append(_exclude_body.get_rid())
 	query.exclude = exclude
 	return space.intersect_ray(query).is_empty()
-
-
-func _release() -> void:
-	if is_instance_valid(_held_body):
-		_held_body.gravity_scale = _cached_gravity_scale
-		_held_body.remove_from_group(Groups.HELD)
-		if _exclude_body:
-			_held_body.remove_collision_exception_with(_exclude_body)
-	_held_body = null
-
-
-## Drops whatever this controller holds (peer left, kitchen reset).
-func force_release() -> void:
-	_release()
-
-
-func _throw() -> void:
-	if not is_instance_valid(_held_body):
-		_held_body = null
-		return
-	var body: RigidBody3D = _held_body
-	var forward: Vector3 = -camera.global_transform.basis.z
-	_release()
-	body.linear_velocity = forward * throw_speed

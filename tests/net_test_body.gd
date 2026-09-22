@@ -14,7 +14,7 @@ extends Node
 const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
 const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 120.0
-const EXPECTED_CHECKS: Dictionary = {"host": 5, "client": 11}
+const EXPECTED_CHECKS: Dictionary = {"host": 8, "client": 17}
 
 # Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
 const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
@@ -23,6 +23,9 @@ const COUNTER_EGG_POS: Vector3 = Vector3(-2.5, 1.15, 0.5)
 const PASS_PLATE_POS: Vector3 = Vector3(0.0, 1.05, 3.0)
 const PASS_EGG_POS: Vector3 = Vector3(0.0, 1.15, 3.0)
 const CLIENT_STAND_POS: Vector3 = Vector3(0.0, 0.1, 2.0)
+## In front of the Counter: the parked egg sits within break_distance of
+## the hold target from here, so a grab is a sustained hold, not one tick.
+const COUNTER_STAND_POS: Vector3 = Vector3(-2.65, 0.1, 1.9)
 const SPAWN_POINT_1: Vector3 = Vector3(-2.0, 0.1, 4.0)
 const STIR_INTERVAL: int = 20
 const STIR_DRIFT: float = 0.05
@@ -79,7 +82,17 @@ func _run_host() -> void:
 	_load_kitchen()
 	await _step(30)
 
-	# --- Task 5: host holds the plate before anyone joins ---
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	var host_grab: GrabController = _net.get_player(1).grab_controller
+	# The rack is out of reach of SpawnPoint0 (and past break_distance), so
+	# bring the plate to hand first, as the smoke test does before grabs.
+	_teleport(plate, host_grab.hold_target.global_position)
+	await _step(2)
+	host_grab.request_grab(plate.get_path())
+	await _step(2)
+	_check("host.plate_held",
+		host_grab.is_holding() and NetBody.of(plate).held_by == 1,
+		"holding=%s held_by=%d" % [host_grab.is_holding(), NetBody.of(plate).held_by])
 
 	var joined: int = await _wait_until(func() -> bool: return _client_id != 0, PHYSICS_TPS * 40)
 	if not _check("host.client_connected", joined >= 0, "no peer within 40 s"):
@@ -95,7 +108,15 @@ func _run_host() -> void:
 	_check("host.egg_cooked", cooked, "state=%s" % egg.state_name())
 	# Park it on the counter so it stops cooking while the client reacts.
 	_teleport(egg, COUNTER_EGG_POS)
-	# --- Task 5: wait for the client's grab and release ---
+	var egg_net: NetBody = NetBody.of(egg)
+	var grabbed: int = await _wait_until(
+		func() -> bool: return egg_net.held_by == _client_id, PHYSICS_TPS * 20)
+	_check("host.client_grabbed_egg", grabbed >= 0, "held_by=%d" % egg_net.held_by)
+	var released: int = await _wait_until(
+		func() -> bool: return egg_net.held_by == NetBody.NOBODY, PHYSICS_TPS * 20)
+	_check("host.client_released_egg", released >= 0, "held_by=%d" % egg_net.held_by)
+	host_grab.request_release()
+	await _step(2)
 	# --- Task 6: deliver, then start the run ---
 
 	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
@@ -148,7 +169,37 @@ func _run_client() -> void:
 	var on_counter: int = await _wait_until(
 		func() -> bool: return egg.global_position.distance_to(COUNTER_EGG_POS) < 0.5, PHYSICS_TPS * 5)
 	_check("client.position_syncs", on_counter >= 0, "egg at %s" % egg.global_position)
-	# --- Task 5: grab / release through the host ---
+	var plate_seen: int = await _wait_until(func() -> bool:
+		var p: Node = get_tree().get_first_node_in_group("plate")
+		return p != null and NetBody.of(p) != null and NetBody.of(p).held_by == 1, PHYSICS_TPS * 5)
+	_check("client.late_join_held_by", plate_seen >= 0, "plate held_by never became 1")
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	_check("client.late_join_held_group", plate != null and plate.is_in_group("held"),
+		"plate not in 'held' group on the client")
+
+	player.global_position = CLIENT_STAND_POS  # ours to move
+	await _step(5)
+	var grab: GrabController = player.grab_controller
+	grab.request_grab(plate.get_path())
+	await _step(30)
+	_check("client.grab_taken_rejected",
+		not grab.is_holding() and grab.last_reject == GrabController.Reject.TAKEN,
+		"holding=%s reject=%d" % [grab.is_holding(), grab.last_reject])
+
+	player.global_position = COUNTER_STAND_POS
+	await _step(5)
+	grab.request_grab(egg.get_path())
+	var held: int = await _wait_until(func() -> bool: return grab.is_holding(), PHYSICS_TPS * 5)
+	_check("client.grab_rpc", held >= 0 and NetBody.of(egg).held_by == me,
+		"holding=%s held_by=%d" % [grab.is_holding(), NetBody.of(egg).held_by])
+	_check("client.held_name", grab.held_body_name() == egg.name,
+		"held=%s expected=%s" % [grab.held_body_name(), egg.name])
+	await _step(30)
+	grab.request_release()
+	var released: int = await _wait_until(func() -> bool: return not grab.is_holding(), PHYSICS_TPS * 5)
+	_check("client.release_rpc", released >= 0 and NetBody.of(egg).held_by == NetBody.NOBODY,
+		"holding=%s held_by=%d" % [grab.is_holding(), NetBody.of(egg).held_by])
+	player.global_position = CLIENT_STAND_POS
 	# --- Task 6: delivery, mode, timer, teleport ---
 
 	# Stay connected long enough for the host's spawned-player check (it runs
