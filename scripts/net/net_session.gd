@@ -94,8 +94,8 @@ func prepare_client_enet(address: String, port: int) -> void:
 # --- Steam ------------------------------------------------------------------
 
 func host_steam() -> void:
-	if is_online():
-		return
+	if is_online() or _hosting:
+		return  # _hosting: a second Host click while the lobby is being created
 	if not SteamManager.is_ready():
 		last_message = "Steam not detected"
 		session_ended.emit(last_message)
@@ -197,6 +197,7 @@ func leave() -> void:
 	peer_names.clear()
 	_pending_enet = []
 	_pending_steam_host = 0
+	_hosting = false
 	peers_changed.emit()
 
 

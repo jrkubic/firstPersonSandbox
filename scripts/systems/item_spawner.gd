@@ -63,6 +63,11 @@ func is_slot_free() -> bool:
 	return item.global_position.distance_to(global_position) > slot_radius
 
 
+## True once this spawner has produced anything, even if it has since left.
+func has_spawned() -> bool:
+	return _last_spawned != null
+
+
 func _player_count() -> int:
 	var net: KitchenNet = get_tree().get_first_node_in_group(Groups.KITCHEN_NET) as KitchenNet
 	return net.player_count() if net else 1

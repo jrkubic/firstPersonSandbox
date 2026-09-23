@@ -120,9 +120,11 @@ func _on_peer_connected(peer_id: int) -> void:
 	spawn_player(peer_id)
 	_apply_full_state.rpc_id(peer_id, mode, _loop.state, _loop.deliveries_made,
 		_loop.elapsed_time, _orders.recipe_tag, _orders.required_count)
-	# Stations gated by min_players (e.g. 2) may only now be allowed to spawn.
+	# Bring up stations gated by min_players (e.g. 2) that have never spawned.
+	# Stations that already produced something are left alone, or a joiner
+	# would get a second pan and extra eggs/plates mid-practice.
 	for node in get_tree().get_nodes_in_group(Groups.SPAWNER):
-		if (node as ItemSpawner).is_slot_free():
+		if not (node as ItemSpawner).has_spawned():
 			(node as ItemSpawner).spawn()
 
 
