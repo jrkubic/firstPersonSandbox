@@ -25,12 +25,30 @@ var last_message: String = ""
 
 var _pending_enet: Array = []      # [address, port] until the kitchen is ready
 var _pending_steam_host: int = 0   # host Steam id until the kitchen is ready
+var _hosting: bool = false         # between create_lobby and lobby_created
+## A lobby we created but could not host. Steam still delivers lobby_joined
+## for it (we are its owner), which must not turn us into its client.
+var _abandoned_lobby: int = 0
 
 
 func _ready() -> void:
 	SteamManager.lobby_created.connect(_on_steam_lobby_created)
 	SteamManager.lobby_joined.connect(_on_steam_lobby_joined)
 	SteamManager.join_requested.connect(join_steam)
+	# Accepting a Steam invite while the game is closed launches it with
+	# "+connect_lobby <id>". Deferred so the menu scene and SteamManager exist.
+	var invited_lobby: int = _parse_connect_lobby_arg()
+	if invited_lobby != 0:
+		call_deferred("join_steam", invited_lobby)
+
+
+## The lobby id from a "+connect_lobby <id>" command-line pair, or 0.
+func _parse_connect_lobby_arg() -> int:
+	var args: PackedStringArray = OS.get_cmdline_args()
+	for i in range(args.size() - 1):
+		if args[i] == "+connect_lobby" and args[i + 1].is_valid_int():
+			return int(args[i + 1])
+	return 0
 
 
 func is_online() -> bool:
@@ -82,6 +100,7 @@ func host_steam() -> void:
 		last_message = "Steam not detected"
 		session_ended.emit(last_message)
 		return
+	_hosting = true
 	SteamManager.create_lobby(MAX_PLAYERS)  # continues in _on_steam_lobby_created
 
 
@@ -95,6 +114,7 @@ func join_steam(target_lobby_id: int) -> void:
 
 func _on_steam_lobby_created(ok: bool, new_lobby_id: int) -> void:
 	if not ok:
+		_hosting = false
 		last_message = "Could not create Steam lobby"
 		session_ended.emit(last_message)
 		return
@@ -103,18 +123,24 @@ func _on_steam_lobby_created(ok: bool, new_lobby_id: int) -> void:
 	if peer != null and peer.has_method("create_host"):
 		err = int(peer.call("create_host", 0)) as Error
 	if err != OK:
+		_hosting = false
+		_abandoned_lobby = new_lobby_id  # its lobby_joined is still on its way
 		last_message = "Steam host failed (%d)" % err
 		SteamManager.leave_lobby(new_lobby_id)
 		session_ended.emit(last_message)
 		return
 	lobby_id = new_lobby_id
 	_become_host(peer)
+	_hosting = false
 	get_tree().change_scene_to_file(KITCHEN_SCENE)
 
 
 func _on_steam_lobby_joined(ok: bool, joined_lobby_id: int, owner_steam_id: int) -> void:
 	if role != Role.OFFLINE:
 		return  # the host also receives lobby_joined for its own lobby
+	if joined_lobby_id != 0 and joined_lobby_id == _abandoned_lobby:
+		_abandoned_lobby = 0
+		return  # our own lobby whose create_host failed; do not join it as a client
 	if not ok:
 		last_message = "Could not join Steam lobby"
 		session_ended.emit(last_message)
@@ -148,9 +174,7 @@ func kitchen_ready() -> Error:
 	else:
 		return ERR_UNCONFIGURED
 	if err != OK:
-		last_message = "Connection failed (%d)" % err
-		leave()
-		session_ended.emit(last_message)
+		_end_with("Connection failed (%d)" % err)  # back to the menu, not a playerless kitchen
 		return err
 	multiplayer.multiplayer_peer = peer
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
@@ -190,7 +214,6 @@ func _become_host(peer: MultiplayerPeer) -> void:
 	multiplayer.multiplayer_peer = peer
 	role = Role.HOST
 	peer_names = {1: local_name()}
-	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	peers_changed.emit()
 
 
@@ -214,17 +237,11 @@ func _end_with(reason: String) -> void:
 		get_tree().change_scene_to_file(MENU_SCENE)
 
 
-func _on_peer_disconnected(id: int) -> void:
-	peer_names.erase(id)
-	peers_changed.emit()
-
-
 func _disconnect_multiplayer_signals() -> void:
 	var pairs: Array = [
 		[multiplayer.connected_to_server, _on_connected_to_server],
 		[multiplayer.connection_failed, _on_connection_failed],
 		[multiplayer.server_disconnected, _on_server_disconnected],
-		[multiplayer.peer_disconnected, _on_peer_disconnected],
 	]
 	for pair: Array in pairs:
 		var sig: Signal = pair[0]

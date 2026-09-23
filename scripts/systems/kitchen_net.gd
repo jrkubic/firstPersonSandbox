@@ -120,6 +120,10 @@ func _on_peer_connected(peer_id: int) -> void:
 	spawn_player(peer_id)
 	_apply_full_state.rpc_id(peer_id, mode, _loop.state, _loop.deliveries_made,
 		_loop.elapsed_time, _orders.recipe_tag, _orders.required_count)
+	# Stations gated by min_players (e.g. 2) may only now be allowed to spawn.
+	for node in get_tree().get_nodes_in_group(Groups.SPAWNER):
+		if (node as ItemSpawner).is_slot_free():
+			(node as ItemSpawner).spawn()
 
 
 func _on_peer_disconnected(peer_id: int) -> void:

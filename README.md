@@ -254,6 +254,14 @@ a different account; the accounts must be Steam friends. Set both up per
 **Co-op setup** above, including the Non-Steam Game entry so the overlay
 works. Record the result in the table below.
 
+- Relay warm-up: SteamManager calls initRelayNetworkAccess() after init; if
+  the first guest connect still times out, wait ~10 s after both games start
+  and retry the invite.
+
+Accepting an invite while the game is closed launches it with
+`+connect_lobby <id>` on the command line and the game joins automatically,
+so step 4 also works from a cold start.
+
 1. Both launch the game. Menu status line shows `Steam ready as <persona name>`.
 2. Host presses **Host with Steam**. Kitchen loads in practice mode; lobby
    panel top-right shows `PRACTICE` and the host's name.

@@ -88,6 +88,8 @@ func _try_init() -> void:
 		_steam = null
 		return
 	_initialized = true
+	if _steam.has_method("initRelayNetworkAccess"):
+		_steam.call("initRelayNetworkAccess")  # warm the relay so the first P2P connect does not time out
 	_steam.connect("lobby_created", _on_lobby_created)
 	_steam.connect("lobby_joined", _on_lobby_joined)
 	_steam.connect("join_requested", _on_join_requested)
