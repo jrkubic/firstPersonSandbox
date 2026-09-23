@@ -844,7 +844,8 @@ func _check_trash() -> void:
 	await _step(30)
 	_check("trash.held_survives", is_instance_valid(egg), "held egg was binned")
 	egg.remove_from_group("held")
-	var freed: int = await _wait_until(func() -> bool: return not is_instance_valid(egg), 30)
+	var egg_ref: WeakRef = weakref(egg)
+	var freed: int = await _wait_until(func() -> bool: return egg_ref.get_ref() == null, 30)
 	_check("trash.egg_freed", freed >= 0, "released egg still alive after 30 frames")
 	await _step(5)
 	var new_egg: FoodItem = _first_food()
@@ -855,7 +856,8 @@ func _check_trash() -> void:
 
 	# Pan: binned and replaced on the stove even though pans never refill on delivery.
 	_teleport(pan, TRASH_ZONE_POS)
-	var pan_freed: int = await _wait_until(func() -> bool: return not is_instance_valid(pan), 30)
+	var pan_ref: WeakRef = weakref(pan)
+	var pan_freed: int = await _wait_until(func() -> bool: return pan_ref.get_ref() == null, 30)
 	_check("trash.pan_freed", pan_freed >= 0, "pan still alive after 30 frames")
 	await _step(30)
 	var new_pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
@@ -866,7 +868,8 @@ func _check_trash() -> void:
 
 	# Plate with nothing on it.
 	_teleport(plate, TRASH_ZONE_POS)
-	var plate_freed: int = await _wait_until(func() -> bool: return not is_instance_valid(plate), 30)
+	var plate_ref: WeakRef = weakref(plate)
+	var plate_freed: int = await _wait_until(func() -> bool: return plate_ref.get_ref() == null, 30)
 	await _step(5)
 	_check("trash.plate_replaced",
 		plate_freed >= 0 and get_tree().get_nodes_in_group("plate").size() == 1
