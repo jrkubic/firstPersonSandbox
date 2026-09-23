@@ -58,13 +58,13 @@ How to read it:
 
 ## 3. Look at it running (3 min)
 
-Open the project in Godot 4.7.2 and press **F5**, then **Start Game**. Turn
+Open the project in Godot 4.7.2 and press **F5**, then **Solo**. Turn
 on these editor aids before or while it runs:
 
 | Where | What it shows |
 |-------|---------------|
 | **Debug → Visible Collision Shapes** | Rim segments, handle, CookSlot / FoodContainer / DeliveryZone boxes. The fastest way to see why something does not overlap. |
-| **Scene dock → Remote** (while running) | The live tree. Spawned eggs and plates appear directly under `Kitchen`. Click a node to read `cook_progress`, `containers`, `sleeping`, `linear_velocity` in the Inspector. |
+| **Scene dock → Remote** (while running) | The live tree. Spawned eggs, pans and plates appear under `Kitchen/Items`, player bodies under `Kitchen/Players/<peer id>`. Click a node to read `cook_progress`, `containers`, `sleeping`, `linear_velocity` in the Inspector. |
 | **Debugger → Errors** | Runtime errors and warnings with the GDScript line. |
 | **Debugger → Monitors** | Physics active objects and FPS; useful if items jitter or tunnel. |
 
@@ -97,6 +97,27 @@ F throw, Escape pause, F3 overlay.
 | No new egg or plate after delivery | Remote tree | Previous item still within `slot_radius` (0.35 m) of its spawner, so the slot counts as full | `ItemSpawner.is_slot_free()`, `kitchen_loop.gd` |
 | Item falls through a counter or floor | Remote → `collision_mask` | Items need mask 7 (World + Player + Items) | `scenes/items/*.tscn` |
 | Egg hangs in mid-air | Remote → `sleeping` | Should not happen (`can_sleep = false` on food); if it does, something reset it | `scripts/items/food_item.gd` |
+
+## Networking
+
+Online, F3 adds four watches: `net.role` (`OFFLINE` / `HOST` / `CLIENT`),
+`net.peer` (our peer id; the host is `1`), `net.players` (bodies under
+`Players`) and `net.mode` (`PRACTICE` / `RUN`). Check them on **both** peers
+before anything else: a client whose `net.role` is not `CLIENT` never
+connected. The headless reproduction is
+`powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1`; its two
+halves log to `%TEMP%\net_test_host.log` and `%TEMP%\net_test_client.log`
+(stdout: `PASS` / `FAIL` lines) with Godot's `SCRIPT ERROR` / `ERROR` lines
+in the matching `.err.log` files. No Steam needed.
+
+| Symptom | Check first | Likely cause | Look in |
+|---------|-------------|--------------|---------|
+| Client sees frozen items that never move | Client F3 `net.role`, host log | Client egg/pan/plate is meant to be `freeze = true` and moved only by `NetBody` from the synced `net_position` / `net_rotation`; if they never update, the item's `MultiplayerSynchronizer` is not sending (wrong authority, config not loaded, `Property not found` in the host log) or `NetBody._physics_process` is not easing toward the target | `scripts/net/net_body.gd`, `scenes/sync/egg_sync.tres` / `container_sync.tres`, `scenes/items/*.tscn` |
+| Grab does nothing on a client | Client `held`, host log | `request_grab` RPC not reaching the host, or the host rejects it: `held_by != -1` (`TAKEN`), or the item is farther than `break_distance` from the requester's replicated hold target (`OUT_OF_REACH`). Player must have `set_multiplayer_authority(peer)` in `_enter_tree` and be named by its peer id (`Players/<id>`) or the RPC sender lookup fails | `scripts/systems/grab_controller.gd` (`request_grab`, `last_reject`), `scripts/net/net_body.gd` (`held_by`), `scripts/systems/kitchen_net.gd` (`get_player`) |
+| Late joiner sees wrong mode, counter or timer | Client F3 `net.mode`, HUD | Discrete state (mode, loop state, deliveries, elapsed, order) is pushed once per join by `_apply_full_state.rpc_id` from `_on_peer_connected`; if it fires before the client's kitchen exists or the argument list drifts, the client keeps defaults | `scripts/systems/kitchen_net.gd` (`_on_peer_connected`, `_apply_full_state`) |
+| Everything freezes when the host opens Escape | `get_tree().paused` on host | Online, the pause menu must **not** pause the tree (pausing stalls replication for everyone); `_pause()` only sets `paused = true` when `NetSession.is_online()` is false; the end screen gates its own `paused = true` the same way | `scripts/ui/pause_menu.gd`, `scripts/ui/end_screen.gd` |
+| Guest lands on the menu with `Host left` unexpectedly | Host still running? | `server_disconnected` fired: host quit, host process crashed (see its stderr), or ENet/Steam timeout | `scripts/net/net_session.gd` (`_on_server_disconnected`) |
+| `Steam not detected` with Steam running | `.godot/extension_list.cfg` | Fresh clone: the GDExtension is not listed until the editor scans once (or you create the file with `res://addons/godotsteam/godotsteam.gdextension`); or `addons/godotsteam/` is missing (git-ignored) | README → Co-op setup, `scripts/net/steam_manager.gd` |
 
 Physics layers for reference:
 

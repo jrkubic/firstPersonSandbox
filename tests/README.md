@@ -8,7 +8,11 @@ exist (a `--script` MainLoop is compiled before them, and any `class_name`
 script it types that names `NetSession` would fail to compile). The body
 loads `scenes/kitchen.tscn` headless, drives the physics items by teleporting
 them, and asserts the whole cook loop end to end. No addons, no editor, no
-display needed.
+display needed. Since the co-op build the player is spawned by `KitchenNet`
+at `Players/1` (so the camera and `GrabController` are looked up under
+`Players/1/Head/Camera3D`) and every egg, pan and plate lives under `Items`,
+not the `Kitchen` root; the smoke test runs the solo path, which is the host
+path with zero clients.
 
 Run from the project root (Windows console binary shown; any Godot 4.7
 binary works):
@@ -84,3 +88,102 @@ Write an `async` function that awaits `_step(n)` / `_wait_until(pred, n)` /
 assertion, and call it from `_run()`. Never rely on wall time — count physics
 frames. Use `_xfail` only for a documented gameplay bug that a later task is
 expected to fix.
+
+## Two-peer net test
+
+`tests/net_test.gd` is the `--script` launcher (split from the body for the
+same reason as the smoke test) and `tests/net_test_body.gd` holds the checks.
+Two Godot processes load `scenes/kitchen.tscn` headless and talk over
+`ENetMultiplayerPeer` on localhost, so the `MultiplayerSpawner` /
+`MultiplayerSynchronizer` / `@rpc` code that Steam sessions use runs with no
+Steam client and no addon. The transport is the only thing swapped.
+
+### Running it
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1
+```
+
+The runner starts the host, waits 4 s so it is listening before the client
+connects, starts the client, waits for both to exit (client 150 s, host a
+further 60 s, then kills them), and prints the merged `PASS` / `FAIL` /
+`SUMMARY` lines followed by any `SCRIPT ERROR` / `ERROR:` / `WARNING:` lines
+Godot wrote to stderr. It exits `0` only if both halves exited `0`
+(`NET TEST PASSED`), otherwise `1` with both exit codes. Full stdout of each
+half is in `%TEMP%\net_test_host.log` and `%TEMP%\net_test_client.log`;
+stderr in `net_test_host.err.log` and `net_test_client.err.log` next to
+them. Pass `-Godot <path>` if the console binary is not at
+`%USERPROFILE%\Downloads\Godot_v4.7.2-stable_win64\`, `-Port` to change 7777.
+
+By hand, in two consoles from the project root (start the host first):
+
+```sh
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/net_test.gd -- role=host port=7777
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/net_test.gd -- role=client port=7777
+```
+
+Each half prints its own `SUMMARY <role>: N passed, N failed` line and
+exits `1` if any check failed, if the number of checks run differs from
+`EXPECTED_CHECKS[role]` (`FAIL <role>.summary.count`), or if its 120 s
+watchdog trips. Adding a check means bumping `EXPECTED_CHECKS` for that
+role only (`{"host": 11, "client": 23}` today). Waits are counted in physics
+frames at 60 ticks/s as in the smoke test; the whole run takes about 15 s
+including the runner's 4 s head start.
+
+### Host timeline vs. client assertions
+
+The host does the driving and asserts only that the client's actions arrived;
+the client asserts what it sees replicated. In order, the host: listens,
+loads the kitchen, teleports the plate to hand and grabs it **before** the
+client connects (so the client's first sight of the plate is a held one),
+waits for the peer, cooks the egg (stirring, as the smoke test does), parks
+it on the counter so it stops cooking, waits for the client to grab and then
+release it, releases the plate, delivers the egg on the plate at the Pass,
+checks practice mode did not end the run, calls `KitchenNet.start_run()`, and
+waits for the client to disconnect before leaving.
+
+| Check | What it asserts |
+|-------|-----------------|
+| `host.listen` | `NetSession.host_enet(port)` returns `OK`. Aborts the host half if not. |
+| `host.plate_held` | The host's own `GrabController` holds the plate and `NetBody.held_by == 1` before any client exists. |
+| `host.client_connected` | `peer_connected` fires within 40 s. Aborts if not. |
+| `host.client_player_spawned` | 30 frames later `Players/<client id>` exists on the host. |
+| `host.egg_cooked` | The egg reaches `COOKED` in the pan within 1.5× `cook_duration`. |
+| `host.client_grabbed_egg` | Within 20 s the parked egg's `held_by` becomes the client's peer id — the grab RPC arrived and passed re-validation. |
+| `host.client_released_egg` | Within 20 s `held_by` returns to `NetBody.NOBODY`. |
+| `host.delivered` | Plate then egg teleported to the Pass: `deliveries_made == 1` within 5 s. |
+| `host.practice_no_win` | `KitchenLoop.state` is still `PLAYING` and `KitchenNet.mode` is `PRACTICE`: a practice delivery never ends the run. |
+| `host.run_started` | After `start_run()`: mode `RUN`, `deliveries_made == 0`, exactly two eggs and two plates (one per spawner) after the in-place reset. |
+| `host.client_left` | `peer_disconnected` fires within 60 s. |
+
+The client, in order:
+
+| Check | What it asserts |
+|-------|-----------------|
+| `client.connected` | `connected_to_server` fires within 20 s of `prepare_client_enet`. Aborts if not. |
+| `client.peer_id` | `multiplayer.get_unique_id() > 1`. |
+| `client.player_spawned` | `Players/<own id>` appears within 10 s (host's `MultiplayerSpawner` replayed it). Aborts if not. |
+| `client.player_authority` | That player node reports `is_multiplayer_authority()`. |
+| `client.host_player_visible` | `Players/1` exists and is **not** owned by this peer. |
+| `client.sees_egg` | A `food` node is replicated within 5 s. Aborts if not. |
+| `client.egg_frozen` | The replicated egg has `freeze == true` (no client-side simulation). |
+| `client.egg_parent` | The egg's parent is the kitchen's `Items` node. |
+| `client.cook_progress_syncs` | `cook_progress` climbs past 0.25 while the host cooks. |
+| `client.state_syncs` | `state` becomes `COOKED`. |
+| `client.position_syncs` | The egg ends up within 0.5 m of the host's counter park position. |
+| `client.late_join_held_by` | The plate the host grabbed before we joined arrives with `held_by == 1`. |
+| `client.late_join_held_group` | ...and is in the `held` group locally. |
+| `client.grab_taken_rejected` | `request_grab` on that held plate leaves us not holding, with `last_reject == Reject.TAKEN`. |
+| `client.grab_rpc` | Standing at the counter, `request_grab` on the egg makes `is_holding()` true within 5 s and `held_by` our id. |
+| `client.held_name` | `held_body_name()` matches the egg's node name. |
+| `client.release_rpc` | `request_release` clears `is_holding()` and `held_by` goes back to `NOBODY` within 5 s. |
+| `client.practice_mode_on_join` | `KitchenNet.mode` is `PRACTICE` (came through the full-state RPC on join). |
+| `client.names_synced` | `NetSession.peer_names` has entries for peer 1 and for us. |
+| `client.delivery_syncs` | `deliveries_made == 1` after the host's delivery. |
+| `client.mode_syncs` | Mode flips to `RUN` after the host's `start_run()`. |
+| `client.teleport_rpc` | Our player is within 0.5 m of `SpawnPoint1` — the owning-peer teleport RPC moved a body we have authority over. |
+| `client.timer_syncs` | `KitchenLoop.elapsed_time` passes 0.5 s on the client. |
+
+The client stays connected two more seconds before leaving so the host's
+`client_player_spawned` check (30 frames after `peer_connected`) never races
+its departure.

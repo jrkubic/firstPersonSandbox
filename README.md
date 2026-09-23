@@ -1,8 +1,8 @@
 # firstPersonSandbox
 
-A PEAK-style first-person cooking sandbox built on Godot 4.7. Currently contains
-a solo vertical slice where a player cooks a fried egg and delivers it to the
-pass.
+A PEAK-style first-person cooking sandbox built on Godot 4.7. Contains a
+vertical slice where players cook a fried egg and deliver it to the pass, solo
+or in Steam co-op for up to four.
 
 ## Status
 
@@ -13,12 +13,45 @@ pass.
   plate-on-pan no longer re-cooks, per-spawner respawn under the kitchen root,
   `state_changed` listener, dot crosshair, and a 95-check headless smoke test
   (94 pass, 1 documented expected failure).
-- **Next candidates:** recipe variety, art pass, co-op.
+- **Co-op built 2026-09-23 on branch `coop`:** Steam lobbies via GodotSteam,
+  up to 4 players, host-authoritative physics, practice kitchen lobby,
+  in-place run reset, two-peer ENet regression test.
+- **Next candidates:** recipe variety, art pass, holder-owned physics if
+  held-item lag bites.
 
 ## How to run
 
-Open the project in Godot 4.7 and press F5. The menu loads; click **Start Game**
-to enter the kitchen.
+Open the project in Godot 4.7 and press F5. The menu loads; click **Solo** to
+enter the kitchen alone. **Host with Steam** starts a co-op session (greyed
+out when Steam is not detected; the status line under the buttons says why).
+There is no Join button: guests join by accepting a Steam invite.
+
+### Co-op setup
+
+Solo play and both automated tests need none of this. For Steam sessions:
+
+1. Download GodotSteam 4.22.1 (GDExtension build) from
+   https://codeberg.org/godotsteam/godotsteam/releases — tag `v4.22.1-gde`,
+   asset `godotsteam-4.22.1-gdextension-plugin-4.4.zip` — and unzip it so
+   that `addons/godotsteam/godotsteam.gdextension` exists. `addons/godotsteam/`
+   is git-ignored, so every clone installs it separately.
+2. Delete `addons/godotsteam/editor/` (its updater plugin is broken on Godot
+   4.4+) and do not enable the "GodotSteam Updater" plugin.
+3. Godot only loads extensions listed in `.godot/extension_list.cfg`, which
+   the editor writes on its filesystem scan. On a fresh clone open the
+   project once in the editor, or create that file containing
+   `res://addons/godotsteam/godotsteam.gdextension`, before headless or
+   exported runs can see Steam.
+4. `steam_appid.txt` (App ID 480, Valve's test app) is committed for
+   development. Steam must be running and logged in when the game starts.
+5. For the overlay (invites), add the game as a Non-Steam Game: Steam > Add a
+   Game > Add a Non-Steam Game, pointing at the Godot exe with
+   `--path C:\Projects\firstPersonSandbox` as launch options, or at an
+   exported exe.
+6. Exports ship `steam_api64.dll` and
+   `libgodotsteam.windows.template_release.x86_64.dll` from
+   `addons/godotsteam/win64/` next to the exe, and must not ship
+   `steam_appid.txt`.
 
 ## How to play (the cook loop)
 
@@ -32,6 +65,22 @@ to enter the kitchen.
 6. A fresh plate and egg respawn automatically. Repeat; after the third
    delivery the end screen shows your time and star rating.
 
+### Co-op
+
+1. Host presses **Host with Steam**. The kitchen loads in practice mode: no
+   timer, no delivery goal, everything else works. The lobby panel top-right
+   reads `PRACTICE` and lists the players.
+2. Host presses Escape > **Invite friends** and invites from the Steam
+   overlay dialog. Guests accept from the overlay or their friends list and
+   land in the same kitchen.
+3. Practice together. The HUD shows `Practice  Delivered: N` and `--:--`.
+4. When everyone is in, host presses Escape > **Start Run**. Everyone
+   teleports to the door, items reset, the lobby locks and the HUD switches
+   to `Delivered: N/3` with a timer.
+5. After the third delivery the end screen shows on every peer. Host has
+   **Play Again** and **Back to Practice** (reopens the lobby); anyone can
+   **Leave**. If the host quits, guests return to the menu with `Host left`.
+
 ## Controls
 
 | Input    | Action                          |
@@ -42,7 +91,7 @@ to enter the kitchen.
 | Ctrl / C | Crouch (hold)                   |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (releases the mouse) |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online) |
 | F3       | Toggle debug overlay            |
 
 Grabbing is forgiving: if the centre dot narrowly misses a small item, a
@@ -52,7 +101,7 @@ still picks it up, provided the item is in line of sight. Toggle it with
 
 ## Debug overlay
 
-Press F3 to toggle. Eight watched values:
+Press F3 to toggle. Twelve watched values:
 
 - `held` — currently held body name, or `<none>`
 - `crouched` — `true` while the player is crouched
@@ -66,8 +115,14 @@ Press F3 to toggle. Eight watched values:
 - `pan.on_stove` — `true` / `false`
 - `plate.contents` — comma-separated list of food items resting on the plate
 - `order` — current order text from `OrderSystem`
+- `net.role` — `OFFLINE` (solo) / `HOST` / `CLIENT`
+- `net.peer` — this peer's multiplayer id (`1` for the host and for solo)
+- `net.players` — number of player bodies under `Players`
+- `net.mode` — `PRACTICE` / `RUN`, from `KitchenNet`
 
-## Automated smoke test
+## Automated tests
+
+### Headless smoke test
 
 `tests/smoke_test.gd` (entry point; the checks are in
 `tests/smoke_test_body.gd`) loads the kitchen headless, drives the items by
@@ -123,6 +178,33 @@ watchdog trips. The 95 checks are:
 
 Determinism notes, per-check details and how to add a check: `tests/README.md`.
 
+### Two-peer net test
+
+`tests/run_net_test.ps1` launches `tests/net_test.gd` (a launcher for
+`tests/net_test_body.gd`, split for the same reason as the smoke test) twice
+over `ENetMultiplayerPeer` on localhost port 7777 — one host, one client — so
+the replication code runs without Steam. The host gets a 4 s head start;
+each half has a 120 s watchdog.
+
+```sh
+powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1
+```
+
+The script prints the merged `PASS` / `FAIL` / `SUMMARY` lines of both halves
+(stdout goes to `%TEMP%\net_test_host.log` and `net_test_client.log`, Godot's
+stderr to the matching `.err.log` files) and ends with `NET TEST PASSED` or
+`NET TEST FAILED`. The 34 checks split into 11 `host.*` and 23 `client.*`:
+the host follows a scripted timeline (listen, hold the plate before the client
+joins, cook the egg, park it on the counter, wait for the client's grab and
+release, deliver, start the run, wait for the client to leave) while the
+client asserts what it sees replicated — its own player spawned with
+authority and the host's without, the egg frozen and parented under `Items`,
+`cook_progress`, state and position arriving, the plate reported `held_by`
+the host on late join, a grab on that plate rejected as `TAKEN`, its own grab
+and release round-tripping through the RPCs, names and practice mode on
+join, the delivery count, the mode switch, the teleport on run start and the
+timer ticking. Per-check table: `tests/README.md`.
+
 ## Manual smoke test
 
 Run this after any meaningful change to verify the slice end-to-end.
@@ -165,19 +247,68 @@ Run this after any meaningful change to verify the slice end-to-end.
     the plate and look down to tilt it: the egg slides over the rim onto the
     plate.
 
+## Manual Steam test
+
+Two machines (or one PC plus a VM), each with Steam running and logged in to
+a different account; the accounts must be Steam friends. Set both up per
+**Co-op setup** above, including the Non-Steam Game entry so the overlay
+works. Record the result in the table below.
+
+1. Both launch the game. Menu status line shows `Steam ready as <persona name>`.
+2. Host presses **Host with Steam**. Kitchen loads in practice mode; lobby
+   panel top-right shows `PRACTICE` and the host's name.
+3. Host presses Escape > **Invite friends**; Steam overlay invite dialog
+   opens; invite the second account.
+4. Guest accepts the invite (overlay or Steam friends list). Guest's kitchen
+   loads; both panels list both names; guest sees the host's capsule, the
+   egg, pan and plate. F3 on the guest shows `net.role: CLIENT`.
+5. Guest picks up the egg (E). Host sees it lift. Guest drops it in the pan;
+   both see it cook (colour shift), F3 `egg.state` agrees on both.
+6. Host holds the plate, guest tries E on it: nothing happens on the guest
+   (rejected as taken).
+7. Guest plates a cooked egg and sets it on the Pass. Both HUDs show
+   `Practice  Delivered: 1`; items respawn on both.
+8. Host presses Escape > **Start Run**. Both teleport to the door, items
+   reset, HUD shows `Delivered: 0/3` and a timer on both.
+9. Complete three deliveries together. End screen on both: host has Play
+   Again / Back to Practice / Leave; guest has Leave only.
+10. Host presses **Back to Practice**. Both return to practice, lobby panel
+    says `PRACTICE`.
+11. Guest presses Escape > **Leave**. Host's panel drops the guest; anything
+    the guest held falls.
+12. Guest re-joins via invite while the host holds the pan: the guest sees
+    the pan held (in the host's hand) on arrival.
+13. Host quits (Escape > Quit). Guest lands on the menu with `Host left`.
+
+Note how a held item feels on the guest (loose grip vs. visible lag); that
+number decides whether holder-owned physics is worth building.
+
+| Date | Godot | GodotSteam | Result | Held-item feel |
+|------|-------|------------|--------|----------------|
+| —    | 4.7.2 | 4.22.1     | not yet run | — |
+
 ## Project layout
 
 - `scenes/` — `menu.tscn`, `kitchen.tscn`, `player.tscn`,
-  `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup}.tscn`,
-  `items/{egg,pan,plate}.tscn`
+  `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup,lobby_panel}.tscn`,
+  `items/{egg,pan,plate}.tscn`,
+  `sync/{player,egg,container,loop,orders,net}_sync.tres`
+  (`MultiplayerSynchronizer` replication configs)
 - `scripts/` — `player.gd`, `menu.gd`, `groups.gd` (node-group name
   constants), `items/{food_item,pan,plate}.gd`,
-  `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,item_spawner,kitchen_loop}.gd`,
-  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup}.gd`
+  `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
+  Steam autoload, per-item replication and smoothing),
+  `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
+  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel}.gd`
 - `tests/` — `smoke_test.gd` (headless smoke test entry point),
-  `smoke_test_body.gd` (its checks) and their `README.md`
-- `docs/plans/` — the design doc and the implementation plan that drove this
-  build; the plan ends with the post-slice backlog and its completion notes
+  `smoke_test_body.gd` (its checks), `net_test.gd` / `net_test_body.gd`
+  (two-peer ENet test) with `run_net_test.ps1`, and their `README.md`
+- `steam_appid.txt` — App ID 480 for development; never exported
+- `addons/godotsteam/` — GodotSteam GDExtension, git-ignored (see Co-op
+  setup)
+- `docs/plans/` — the design docs and implementation plans that drove the
+  solo slice and the co-op build; the solo plan ends with the post-slice
+  backlog and its completion notes
 - `docs/WALKTHROUGH.md` — quick inspect-and-debug guide: health checks,
   editor debug views, overlay values, symptom-to-cause table, probe template
 
@@ -200,7 +331,15 @@ Run this after any meaningful change to verify the slice end-to-end.
 - Releasing an item only reaches ~1.2 m ahead of the camera: walk up to the
   stove or rack and keep the view roughly level to drop food into the pan or
   onto the plate.
-- Single player only; no networking
+- Co-op (see `docs/plans/2026-09-22-coop-multiplayer-design.md`, Known
+  caveats): a held item trails a guest's hand by one round trip because the
+  host runs the pull; the first-build interpolation on guests chases its
+  target under jitter (a two-state buffer is the next step); the host
+  re-validates a grab by distance only, not line of sight; throw direction
+  comes from the replicated head, one tick stale; no host migration (host
+  leaves, everyone returns to the menu); no drop-in to a live run (joins go
+  to the practice kitchen only); Steam App ID 480 only; late joiners get
+  discrete state (mode, deliveries, timer, order) via one full-state RPC
 
 ## Backlog
 
@@ -213,3 +352,5 @@ go in the same list.
 
 - Godot 4.7 (4.7.2 stable or later), Forward+ renderer
 - Jolt Physics (already configured in `project.godot`)
+- For co-op only: GodotSteam 4.22.1 GDExtension and a running Steam client
+  (see Co-op setup)

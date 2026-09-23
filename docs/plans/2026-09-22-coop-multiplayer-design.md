@@ -211,6 +211,13 @@ and `ItemSpawner`. Clients see cook state only through synced properties.
 - Export must ship `steam_api64.dll` and
   `libgodotsteam.windows.template_release.x86_64.dll` next to the exe and
   must not ship `steam_appid.txt`.
+- **Static synchronizers after the client's peer swap** (Task 6): the
+  fallback (periodic full-state RPC) was not needed. The `KitchenLoop`,
+  `OrderSystem` and `KitchenNet` synchronizers kept sending after the client
+  swapped in its peer; only the one-shot `_apply_full_state` RPC on join is
+  used, for discrete state a late joiner would otherwise miss.
+- Held-item feel on a guest over Steam: not yet measured (see README Manual
+  Steam test table).
 
 ## Out of scope
 
