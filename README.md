@@ -93,7 +93,7 @@ appears at its station.
 | Mouse    | Look                            |
 | Space    | Jump (not while crouched)       |
 | Ctrl / C | Crouch (hold)                   |
-| Shift    | Walk (hold): half speed for carrying plates |
+| Shift    | Walk (hold): 30% speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
 | Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only) |

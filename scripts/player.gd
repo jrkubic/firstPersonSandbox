@@ -26,9 +26,9 @@ extends CharacterBody3D
 @export var crouch_capsule_height := 1.3
 
 @export_group("Walk")
-## move_speed is multiplied by this while "walk" (Shift) is held. Meant for
+## move_speed is multiplied by this while "walk" (Shift) is held (0.3 = 2.4 m/s). Meant for
 ## carrying plates without launching what's on them.
-@export var walk_speed_multiplier := 0.5
+@export var walk_speed_multiplier := 0.3
 
 ## The stand-up probe's bottom is lifted this far off the floor so resting on
 ## the ground never counts as an obstruction; its top stays at standing height.
