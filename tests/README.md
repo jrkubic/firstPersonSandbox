@@ -194,8 +194,9 @@ its departure.
 holds the checks (same launcher/body split as the other two). The body
 instantiates `scenes/menu.tscn` as the current scene, waits one frame for
 `_ready`, then drives the flow by emitting each button's `pressed` signal and
-reading page visibility. No Steam, addon or display is needed; the run takes
-about a second. A 60 s watchdog fails it if it stalls.
+reading page visibility, then watches the background diorama for 90 frames.
+No Steam, addon or display is needed; the run takes a few seconds. A 60 s
+watchdog fails it if it stalls.
 
 ```sh
 Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/menu_test.gd
@@ -206,7 +207,7 @@ The menu's pages are `VBoxContainer`s toggled by `scripts/menu.gd`
 unique name (`%MainPage`, `%PlayButton`, ...), so renaming or re-parenting a
 node inside a page does not break the test as long as `unique_name_in_owner`
 stays set. It exits `1` if any check fails or if the number of checks run
-differs from `EXPECTED_CHECKS` (12 today).
+differs from `EXPECTED_CHECKS` (16 today).
 
 | Check | What it asserts |
 |-------|-----------------|
@@ -222,6 +223,10 @@ differs from `EXPECTED_CHECKS` (12 today).
 | `menu.solo_wired` | `%SoloButton.pressed` has exactly one connection. |
 | `menu.quit_wired` | `%QuitButton.pressed` has exactly one connection. |
 | `menu.host_wired` | `%HostButton.pressed` has exactly one connection. |
+| `diorama.present` | `Background/MenuDiorama` exists. The three checks below are recorded as failed if not. |
+| `diorama.three_chefs` | `MenuDiorama/Chefs` has exactly three children. |
+| `diorama.camera_current` | `MenuDiorama/Camera3D` exists and is the current camera. |
+| `diorama.chefs_move` | After 90 process frames at least two chefs are more than 0.05 m from where they started. |
 
 Solo and Quit are never actually pressed: Solo would `change_scene_to_file`
 into the kitchen and Quit would end the process, so the test only asserts

@@ -210,11 +210,13 @@ timer ticking. Per-check table: `tests/README.md`.
 
 `tests/menu_test.gd` (launcher for `tests/menu_test_body.gd`, split like the
 others) instantiates `scenes/menu.tscn` headless and drives the buttons by
-emitting `pressed`. Its 12 checks cover the page flow (Main > Play > Solo /
+emitting `pressed`. Its 16 checks cover the page flow (Main > Play > Solo /
 Multiplayer > Host via Steam, and Back on each page), that the Solo, Host and
-Quit buttons are wired, the Host button's label, and the offline status line.
-Steam is never available headless, so it also asserts Host is disabled. No
-addon or display needed; it runs in about a second.
+Quit buttons are wired, the Host button's label, the offline status line, and
+the background diorama (present, three chefs, its camera is current, and at
+least two chefs have moved after 90 frames). Steam is never available
+headless, so it also asserts Host is disabled. No addon or display needed; it
+runs in a few seconds.
 
 ```sh
 "<Godot console exe>" --headless --path <project> --script res://tests/menu_test.gd
@@ -313,7 +315,9 @@ number decides whether holder-owned physics is worth building.
 ## Project layout
 
 - `scenes/` — `menu.tscn`, `kitchen.tscn`, `player.tscn`,
-  `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup,lobby_panel}.tscn`,
+  `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.tscn`
+  (`menu_diorama.tscn` is the animated primitive kitchen behind the title
+  menu),
   `items/{egg,pan,plate}.tscn`,
   `sync/{player,egg,container,loop,orders,net}_sync.tres`
   (`MultiplayerSynchronizer` replication configs)
@@ -322,7 +326,12 @@ number decides whether holder-owned physics is worth building.
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
   Steam autoload, per-item replication and smoothing),
   `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
-  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel}.gd`
+  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.gd`
+  (`menu_diorama.gd` builds the menu's flat-shaded kitchen and three tweened
+  capsule chefs from primitives in `_ready`; no art assets)
+- `scene.gltf`, `scene.bin`, `textures/` — the old Sketchfab menu background.
+  No scene uses them any more (the menu draws `menu_diorama.tscn` instead);
+  they can be deleted.
 - `tests/` — `smoke_test.gd` (headless smoke test entry point),
   `smoke_test_body.gd` (its checks), `net_test.gd` / `net_test_body.gd`
   (two-peer ENet test) with `run_net_test.ps1`, `menu_test.gd` /

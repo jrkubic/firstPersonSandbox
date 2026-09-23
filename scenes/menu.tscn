@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bikm81cso2up2"]
 
-[ext_resource type="PackedScene" uid="uid://qptw5il5d2un" path="res://scene.gltf" id="1_yqeox"]
 [ext_resource type="Script" path="res://scripts/menu.gd" id="2_menu"]
+[ext_resource type="PackedScene" path="res://scenes/ui/menu_diorama.tscn" id="3_diorama"]
 
 [sub_resource type="FontVariation" id="FontVariation_vjb58"]
 
@@ -34,23 +34,7 @@ script = ExtResource("2_menu")
 
 [node name="Background" type="Node3D" parent="." unique_id=1453389750]
 
-[node name="Sketchfab_Scene" parent="Background" unique_id=897435348 instance=ExtResource("1_yqeox")]
-
-[node name="SubViewportContainer" type="SubViewportContainer" parent="Background" unique_id=749611339]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="SubViewport" type="SubViewport" parent="Background/SubViewportContainer" unique_id=1126978608]
-handle_input_locally = false
-size = Vector2i(1280, 720)
-render_target_update_mode = 4
-
-[node name="Camera3D" type="Camera3D" parent="Background/SubViewportContainer/SubViewport" unique_id=204943298]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11315322, 1.5498754, 1.5214396)
-fov = 57.570534
+[node name="MenuDiorama" parent="Background" instance=ExtResource("3_diorama")]
 
 [node name="Control" type="Control" parent="." unique_id=695242621]
 layout_mode = 3

@@ -5,7 +5,7 @@ extends Node
 
 const MENU_SCENE: String = "res://scenes/menu.tscn"
 const WATCHDOG_SECONDS: float = 60.0
-const EXPECTED_CHECKS: int = 12
+const EXPECTED_CHECKS: int = 16
 
 var _passed: int = 0
 var _failed: int = 0
@@ -79,7 +79,26 @@ func _run() -> void:
 	_check("menu.host_wired", host.pressed.get_connections().size() == 1,
 		"host connections=%d" % host.pressed.get_connections().size())
 
-	# --- Task B: diorama checks ---
+	var diorama: Node3D = _menu.get_node_or_null("Background/MenuDiorama") as Node3D
+	if _check("diorama.present", diorama != null, "Background/MenuDiorama missing"):
+		var chefs: Array[Node] = diorama.get_node("Chefs").get_children()
+		_check("diorama.three_chefs", chefs.size() == 3, "chefs=%d" % chefs.size())
+		var camera: Camera3D = diorama.get_node_or_null("Camera3D") as Camera3D
+		_check("diorama.camera_current", camera != null and camera.current, "no current camera")
+		var before: Array[Vector3] = []
+		for chef: Node in chefs:
+			before.append((chef as Node3D).global_position)
+		for i in range(90):
+			await get_tree().process_frame
+		var moved: int = 0
+		for i in range(chefs.size()):
+			if (chefs[i] as Node3D).global_position.distance_to(before[i]) > 0.05:
+				moved += 1
+		_check("diorama.chefs_move", moved >= 2, "only %d chefs moved in 90 frames" % moved)
+	else:
+		_check("diorama.three_chefs", false, "skipped")
+		_check("diorama.camera_current", false, "skipped")
+		_check("diorama.chefs_move", false, "skipped")
 
 	_finish()
 
