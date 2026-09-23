@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 95
+const EXPECTED_CHECKS: int = 97
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -111,6 +111,7 @@ func _run() -> void:
 	await _check_crouch_blocked()
 	await _check_held_egg(pan)
 	await _check_occupied_slot(pan)
+	await _check_walk()
 	_finish()
 
 
@@ -799,6 +800,30 @@ func _check_occupied_slot(pan: Pan) -> void:
 	_check("occupied.slot_still_full", not _egg_spawner.is_slot_free(), "egg slot reported free")
 	_check("occupied.plate_respawned", get_tree().get_nodes_in_group("plate").size() == 1 and _plate_spawner.is_slot_free() == false,
 		"%d plates, plate slot free=%s" % [get_tree().get_nodes_in_group("plate").size(), _plate_spawner.is_slot_free()])
+
+
+## Hold "walk" and "move_right": the player settles at half speed; release
+## walk and it settles at full speed. Strafes along +x from the spawn point,
+## which has ~6 m of clear floor, then returns to the spawn point.
+func _check_walk() -> void:
+	var start: Vector3 = _player.global_position
+	_set_action("walk", true)
+	_set_action("move_right", true)
+	await _step(20)
+	var walking_speed: float = Vector2(_player.velocity.x, _player.velocity.z).length()
+	var expected_walk: float = _player.move_speed * _player.walk_speed_multiplier
+	_check("walk.half_speed", absf(walking_speed - expected_walk) < 0.3,
+		"speed=%.2f expected=%.2f" % [walking_speed, expected_walk])
+	_set_action("walk", false)
+	await _step(20)
+	var running_speed: float = Vector2(_player.velocity.x, _player.velocity.z).length()
+	_check("walk.full_speed_after_release", absf(running_speed - _player.move_speed) < 0.3,
+		"speed=%.2f expected=%.2f" % [running_speed, _player.move_speed])
+	_set_action("move_right", false)
+	await _step(5)
+	_player.global_position = start
+	_player.velocity = Vector3.ZERO
+	await _step(2)
 
 
 # ---------------------------------------------------------------------------

@@ -90,6 +90,7 @@ Solo play and the automated tests need none of this. For Steam sessions:
 | Mouse    | Look                            |
 | Space    | Jump (not while crouched)       |
 | Ctrl / C | Crouch (hold)                   |
+| Shift    | Walk (hold): half speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
 | Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only) |
@@ -102,10 +103,11 @@ still picks it up, provided the item is in line of sight. Toggle it with
 
 ## Debug overlay
 
-Press F3 to toggle. Twelve watched values:
+Press F3 to toggle. Thirteen watched values:
 
 - `held` — currently held body name, or `<none>`
 - `crouched` — `true` while the player is crouched
+- `walking` — `true` while Shift (`walk`) is held
 - `egg.state` — `RAW` / `COOKING` / `COOKED` / `BURNED` (from the first food
   item found in the `food` group)
 - `egg.seconds` — real seconds of heat the egg has received (`%.1fs`), from
@@ -138,7 +140,7 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 95 checks are:
+watchdog trips. The 97 checks are:
 
 - `boot.*` (5) — kitchen loads and is wired; exactly one egg, plate, pan and
   stove; egg `RAW`; pan on the stove; nothing held
@@ -176,6 +178,8 @@ watchdog trips. The 95 checks are:
   until released
 - `occupied.*` (6) — a delivery while a fresh egg still sits in its slot does
   not spawn a second one
+- `walk.*` (2) — holding `walk` settles the player at
+  `move_speed * walk_speed_multiplier`; releasing it restores full speed
 
 Determinism notes, per-check details and how to add a check: `tests/README.md`.
 

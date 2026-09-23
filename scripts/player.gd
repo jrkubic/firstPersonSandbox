@@ -25,6 +25,11 @@ extends CharacterBody3D
 ## Total CapsuleShape3D height while crouched (standing height comes from the scene).
 @export var crouch_capsule_height := 1.3
 
+@export_group("Walk")
+## move_speed is multiplied by this while "walk" (Shift) is held. Meant for
+## carrying plates without launching what's on them.
+@export var walk_speed_multiplier := 0.5
+
 ## The stand-up probe's bottom is lifted this far off the floor so resting on
 ## the ground never counts as an obstruction; its top stays at standing height.
 const STAND_PROBE_LIFT: float = 0.05
@@ -117,6 +122,8 @@ func _physics_process(delta: float) -> void:
 	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 
 	var speed: float = move_speed * (crouch_speed_multiplier if crouched else 1.0)
+	if Input.is_action_pressed("walk"):
+		speed *= walk_speed_multiplier
 	var control := 1.0 if is_on_floor() else air_control
 	if direction != Vector3.ZERO:
 		velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * control * delta)
@@ -130,6 +137,10 @@ func _physics_process(delta: float) -> void:
 
 func is_crouched() -> bool:
 	return crouched
+
+
+func is_walking() -> bool:
+	return is_multiplayer_authority() and Input.is_action_pressed("walk")
 
 
 ## Moves this body on its owning peer. The host calls send_teleport; the
@@ -201,6 +212,7 @@ func _register_debug_watches() -> void:
 	var grab: GrabController = grab_controller
 	overlay.watch("held", Callable(grab, "held_body_name"))
 	overlay.watch("crouched", func() -> String: return str(crouched))
+	overlay.watch("walking", func() -> String: return str(is_walking()))
 	overlay.watch("egg.state", func() -> String:
 		var f: FoodItem = get_tree().get_first_node_in_group(Groups.FOOD) as FoodItem
 		return f.state_name() if f else "-")
