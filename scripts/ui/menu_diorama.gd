@@ -2,10 +2,11 @@ extends Node3D
 ## Title-screen diorama: a flat-shaded kitchen with three capsule chefs who
 ## loop between stations (stove, counter with egg crate, pass window). Built
 ## entirely from primitives in _ready so it needs no assets and matches the
-## grey-box game. The camera orbits slowly around the set.
+## grey-box game. The camera sways gently in front of the set, which sits in
+## the right ~60% of the frame so the menu column on the left stays clear.
 
-const FLOOR_COLOR := Color(0.82, 0.78, 0.72)
-const WALL_COLOR := Color(0.93, 0.90, 0.84)
+const FLOOR_COLOR := Color(0.66, 0.60, 0.52)
+const WALL_COLOR := Color(0.88, 0.84, 0.76)
 const COUNTER_COLOR := Color(0.55, 0.42, 0.32)
 const STOVE_COLOR := Color(0.25, 0.26, 0.30)
 const BURNER_COLOR := Color(1.0, 0.45, 0.15)
@@ -17,21 +18,24 @@ const PLATE_COLOR := Color(0.95, 0.95, 0.97)
 const PAN_COLOR := Color(0.18, 0.18, 0.2)
 const APRON_COLORS: Array[Color] = [Color(0.85, 0.25, 0.2), Color(0.2, 0.45, 0.85), Color(0.25, 0.7, 0.35)]
 
-const STOVE_POS := Vector3(-1.8, 0.0, -0.6)
-const COUNTER_POS := Vector3(1.8, 0.0, -0.6)
-const PASS_POS := Vector3(0.0, 0.0, -2.2)
-const ORBIT_RADIUS := 6.2
-const ORBIT_HEIGHT := 3.0
-const ORBIT_SPEED := 0.12  # radians per second
-const LOOK_AT := Vector3(0.0, 0.7, -0.8)
+const STOVE_POS := Vector3(-1.2, 0.0, -1.4)
+const COUNTER_POS := Vector3(2.0, 0.0, -1.4)
+const PASS_POS := Vector3(0.4, 0.0, -2.6)
+const ORBIT_RADIUS := 5.4
+const ORBIT_HEIGHT := 2.5
+const SWAY_CENTER := 0.25    # radians; camera sits right of centre
+const SWAY_AMPLITUDE := 0.35
+const SWAY_SPEED := 0.25     # radians per second of the sway phase
+# Aimed left of the set's centre: the camera sits on the +x side, so looking
+# left of centre keeps the whole set in the right ~60% of the frame.
+const LOOK_AT := Vector3(-0.9, 0.8, -0.7)
 
 @onready var _chefs_root: Node3D = $Chefs
 @onready var _camera: Camera3D = $Camera3D
 
-var _orbit_angle: float = 0.6
+var _sway_time: float = 0.0
+var _orbit_angle: float = SWAY_CENTER
 var _pan_egg: MeshInstance3D
-var _carried_plate: Node3D
-var _carried_egg: Node3D
 
 
 func _ready() -> void:
@@ -42,7 +46,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_orbit_angle += ORBIT_SPEED * delta
+	_sway_time += delta
+	_orbit_angle = SWAY_CENTER + sin(_sway_time * SWAY_SPEED) * SWAY_AMPLITUDE
 	_camera.global_position = Vector3(
 		sin(_orbit_angle) * ORBIT_RADIUS, ORBIT_HEIGHT, cos(_orbit_angle) * ORBIT_RADIUS - 0.8)
 	_camera.look_at(LOOK_AT, Vector3.UP)
@@ -54,30 +59,33 @@ func _build_environment() -> void:
 	var sky_material := ProceduralSkyMaterial.new()
 	sky_material.sky_top_color = Color(0.55, 0.72, 0.95)
 	sky_material.sky_horizon_color = Color(0.95, 0.85, 0.75)
-	sky_material.ground_bottom_color = Color(0.6, 0.55, 0.5)
-	sky_material.ground_horizon_color = Color(0.95, 0.85, 0.75)
+	sky_material.ground_bottom_color = FLOOR_COLOR
+	sky_material.ground_horizon_color = FLOOR_COLOR
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 1.1
+	env.ambient_light_energy = 0.6
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 0.85
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
 
 	var sun := DirectionalLight3D.new()
-	sun.light_energy = 1.3
+	sun.light_energy = 0.9
 	sun.shadow_enabled = true
 	sun.rotation_degrees = Vector3(-48.0, 35.0, 0.0)
 	add_child(sun)
 
 
 func _build_set() -> void:
-	_box(Vector3(0.0, -0.1, -0.8), Vector3(7.0, 0.2, 5.0), FLOOR_COLOR)          # floor
-	_box(Vector3(0.0, 1.5, -3.2), Vector3(7.0, 3.0, 0.2), WALL_COLOR)            # back wall
+	_box(Vector3(0.0, -0.1, -0.8), Vector3(8.0, 0.2, 6.0), FLOOR_COLOR)          # floor
+	_box(Vector3(0.0, 1.5, -3.6), Vector3(16.0, 3.0, 0.2), WALL_COLOR)           # back wall
+	_box(Vector3(-3.6, 1.5, -0.8), Vector3(0.2, 3.0, 5.6), WALL_COLOR)           # left wall
+	_box(Vector3(3.6, 1.5, -0.8), Vector3(0.2, 3.0, 5.6), WALL_COLOR)            # right wall
 	# Pass window: a shelf through the wall with two plates waiting.
 	_box(PASS_POS + Vector3(0.0, 0.5, -0.6), Vector3(2.2, 1.0, 0.5), PASS_COLOR)
 	_box(PASS_POS + Vector3(0.0, 1.9, -0.9), Vector3(2.4, 0.15, 0.6), PASS_COLOR)  # window header
@@ -109,7 +117,7 @@ func _build_chefs() -> void:
 	var stove_side: Vector3 = STOVE_POS + Vector3(0.0, 0.0, 0.9)
 	var counter_side: Vector3 = COUNTER_POS + Vector3(0.0, 0.0, 0.9)
 	var pass_side: Vector3 = PASS_POS + Vector3(0.0, 0.0, 0.9)
-	var middle: Vector3 = Vector3(0.0, 0.0, 0.6)
+	var middle: Vector3 = Vector3(0.6, 0.0, 0.4)
 
 	# Chef 0 works the stove: bobs in place and flips the pan.
 	var cook: Node3D = _make_chef(APRON_COLORS[0], stove_side, Vector3(0.0, 0.0, -1.0))
@@ -117,20 +125,20 @@ func _build_chefs() -> void:
 
 	# Chef 1 runs plates from the counter to the pass and back.
 	var runner: Node3D = _make_chef(APRON_COLORS[1], counter_side, Vector3(-1.0, 0.0, 0.0))
-	_carried_plate = _cylinder(Vector3.ZERO, 0.2, 0.03, PLATE_COLOR)
-	_carried_plate.reparent(runner)
-	_carried_plate.position = Vector3(0.0, 1.05, -0.35)
+	var carried_plate: Node3D = _cylinder(Vector3.ZERO, 0.2, 0.03, PLATE_COLOR)
+	carried_plate.reparent(runner)
+	carried_plate.position = Vector3(0.0, 0.85, -0.35)
 	_loop_path(runner, [counter_side, middle, pass_side, middle], [1.1, 0.9, 1.3, 0.9], 0.35)
 
 	# Chef 2 ferries eggs from the crate to the stove.
-	var fetcher: Node3D = _make_chef(APRON_COLORS[2], middle + Vector3(0.9, 0.0, 0.9), Vector3(0.0, 0.0, -1.0))
-	_carried_egg = _sphere(Vector3.ZERO, 0.08, EGG_COLOR)
-	_carried_egg.reparent(fetcher)
-	_carried_egg.position = Vector3(0.2, 1.0, -0.35)
+	var fetcher: Node3D = _make_chef(APRON_COLORS[2], middle + Vector3(1.2, 0.0, 0.6), Vector3(0.0, 0.0, -1.0))
+	var carried_egg: Node3D = _sphere(Vector3.ZERO, 0.08, EGG_COLOR)
+	carried_egg.reparent(fetcher)
+	carried_egg.position = Vector3(0.2, 0.8, -0.35)
 	_loop_path(fetcher,
 		[counter_side + Vector3(0.0, 0.0, 0.6), stove_side + Vector3(0.0, 0.0, 0.7),
 			counter_side + Vector3(0.0, 0.0, 0.6)],
-		[1.4, 1.4, 0.0], 0.6)
+		[1.4, 1.4, 0.0], 0.4)
 
 
 ## A chef: apron-coloured capsule body, skin sphere head, tall white hat with
@@ -139,16 +147,16 @@ func _make_chef(apron: Color, at: Vector3, facing: Vector3) -> Node3D:
 	var chef := Node3D.new()
 	chef.position = at
 	_chefs_root.add_child(chef)
-	var body := _capsule(Vector3(0.0, 0.55, 0.0), 0.22, 0.75, apron)
+	var body := _capsule(Vector3(0.0, 0.35, 0.0), 0.19, 0.7, apron)  # bottom on the floor
 	body.reparent(chef, false)
-	var head := _sphere(Vector3(0.0, 1.12, 0.0), 0.17, SKIN_COLOR)
+	var head := _sphere(Vector3(0.0, 0.9, 0.0), 0.15, SKIN_COLOR)
 	head.reparent(chef, false)
-	var hat := _cylinder(Vector3(0.0, 1.42, 0.0), 0.14, 0.32, HAT_COLOR)
+	var hat := _cylinder(Vector3(0.0, 1.18, 0.0), 0.12, 0.3, HAT_COLOR)
 	hat.reparent(chef, false)
-	var brim := _cylinder(Vector3(0.0, 1.27, 0.0), 0.2, 0.05, HAT_COLOR)
+	var brim := _cylinder(Vector3(0.0, 1.04, 0.0), 0.17, 0.05, HAT_COLOR)
 	brim.reparent(chef, false)
 	for side: float in [-1.0, 1.0]:
-		var hand := _sphere(Vector3(0.26 * side, 0.85, -0.15), 0.07, SKIN_COLOR)
+		var hand := _sphere(Vector3(0.22 * side, 0.68, -0.12), 0.06, SKIN_COLOR)
 		hand.reparent(chef, false)
 	if facing.length() > 0.0:
 		chef.look_at(at + facing, Vector3.UP)
@@ -173,7 +181,7 @@ func _loop_path(chef: Node3D, points: Array[Vector3], durations: Array[float], h
 				chef.look_at(flat, Vector3.UP))
 		tween.tween_property(chef, "position", target, duration).set_trans(Tween.TRANS_SINE)
 		tween.parallel().tween_method(func(t: float) -> void:
-			chef.position.y = sin(t * PI * 3.0) * hop * 0.15, 0.0, 1.0, duration)
+			chef.position.y = abs(sin(t * PI * 3.0)) * hop, 0.0, 1.0, duration)
 		tween.tween_interval(0.25)
 
 
@@ -222,6 +230,7 @@ func _start_steam(at: Vector3) -> void:
 	puff.albedo_color = Color(1.0, 1.0, 1.0, 0.35)
 	puff.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	puff.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	puff.vertex_color_use_as_albedo = true  # lets the process material's colour apply
 	mesh.material = puff
 	particles.draw_pass_1 = mesh
 	add_child(particles)
