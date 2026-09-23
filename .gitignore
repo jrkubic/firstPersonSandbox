@@ -12,3 +12,6 @@ desktop.ini
 
 # Local editor config (machine-specific Godot path)
 .vscode/
+
+# GodotSteam GDExtension binaries (install per README: Co-op setup)
+addons/godotsteam/
