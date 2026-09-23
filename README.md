@@ -21,14 +21,15 @@ or in Steam co-op for up to four.
 
 ## How to run
 
-Open the project in Godot 4.7 and press F5. The menu loads; click **Solo** to
-enter the kitchen alone. **Host with Steam** starts a co-op session (greyed
-out when Steam is not detected; the status line under the buttons says why).
-There is no Join button: guests join by accepting a Steam invite.
+Open the project in Godot 4.7 and press F5. The menu loads; click **Play >
+Solo** to enter the kitchen alone, or **Play > Multiplayer > Host via Steam**
+to start a co-op session (Host is greyed out when Steam is not detected; the
+status line under the buttons says why). There is no Join button: guests join
+by accepting a Steam invite. Escape steps back one page.
 
 ### Co-op setup
 
-Solo play and both automated tests need none of this. For Steam sessions:
+Solo play and the automated tests need none of this. For Steam sessions:
 
 1. Download GodotSteam 4.22.1 (GDExtension build) from
    https://codeberg.org/godotsteam/godotsteam/releases — tag `v4.22.1-gde`,
@@ -205,6 +206,20 @@ and release round-tripping through the RPCs, names and practice mode on
 join, the delivery count, the mode switch, the teleport on run start and the
 timer ticking. Per-check table: `tests/README.md`.
 
+### Menu test
+
+`tests/menu_test.gd` (launcher for `tests/menu_test_body.gd`, split like the
+others) instantiates `scenes/menu.tscn` headless and drives the buttons by
+emitting `pressed`. Its 12 checks cover the page flow (Main > Play > Solo /
+Multiplayer > Host via Steam, and Back on each page), that the Solo, Host and
+Quit buttons are wired, the Host button's label, and the offline status line.
+Steam is never available headless, so it also asserts Host is disabled. No
+addon or display needed; it runs in about a second.
+
+```sh
+"<Godot console exe>" --headless --path <project> --script res://tests/menu_test.gd
+```
+
 ## Manual smoke test
 
 Run this after any meaningful change to verify the slice end-to-end.
@@ -310,7 +325,8 @@ number decides whether holder-owned physics is worth building.
   `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel}.gd`
 - `tests/` — `smoke_test.gd` (headless smoke test entry point),
   `smoke_test_body.gd` (its checks), `net_test.gd` / `net_test_body.gd`
-  (two-peer ENet test) with `run_net_test.ps1`, and their `README.md`
+  (two-peer ENet test) with `run_net_test.ps1`, `menu_test.gd` /
+  `menu_test_body.gd` (headless menu flow test), and their `README.md`
 - `steam_appid.txt` — App ID 480 for development; never exported
 - `addons/godotsteam/` — GodotSteam GDExtension, git-ignored (see Co-op
   setup)

@@ -91,7 +91,7 @@ F throw, Escape pause, F3 overlay.
 | `pan.on_stove` true but egg stuck `RAW` | Collision shapes view | Egg landed on the stove top, not in the CookSlot box. Stand right at the stove and keep the view level; the hold point is 1.2 m ahead | `HoldTarget` in `scenes/player.tscn` |
 | Plated egg sitting on the pan does not cook | `plate.contents` | By design: food on a plate is served, not cooking | `CookSlot` skips `FoodItem.is_contained()` |
 | Plate on the Pass does not deliver | `plate.contents`, `held` | Egg not exactly `COOKED`, wrong count, or plate/egg still in `held` | `scripts/systems/order_system.gd`, `delivery_zone.gd` |
-| E does nothing | `held` | Item not on layer 3 (Items), not in `grabbable`, out of `grab_range` (4 m), or a wall blocks line of sight | `scripts/systems/grab_controller.gd` |
+| E does nothing | `held` | Item not on layer 3 (Items), not in `grabbable`, out of `grab_range` (2.5 m), or a wall blocks line of sight | `scripts/systems/grab_controller.gd` |
 | Egg flies out when grabbing the pan | — | **Known open bug** (the grab snaps the pan's velocity). Carry the egg separately | Plan backlog, `tests/README.md` → `carry.pan_keeps_egg` |
 | Stuck crouched | `crouched` | Ceiling over the standing capsule (order board underside is 1.9 m) | `Player._has_stand_clearance()` |
 | No new egg or plate after delivery | Remote tree | Previous item still within `slot_radius` (0.35 m) of its spawner, so the slot counts as full | `ItemSpawner.is_slot_free()`, `kitchen_loop.gd` |

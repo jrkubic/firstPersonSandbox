@@ -187,3 +187,42 @@ The client, in order:
 The client stays connected two more seconds before leaving so the host's
 `client_player_spawned` check (30 frames after `peer_connected`) never races
 its departure.
+
+## Menu test
+
+`tests/menu_test.gd` is the `--script` launcher and `tests/menu_test_body.gd`
+holds the checks (same launcher/body split as the other two). The body
+instantiates `scenes/menu.tscn` as the current scene, waits one frame for
+`_ready`, then drives the flow by emitting each button's `pressed` signal and
+reading page visibility. No Steam, addon or display is needed; the run takes
+about a second. A 60 s watchdog fails it if it stalls.
+
+```sh
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/menu_test.gd
+```
+
+The menu's pages are `VBoxContainer`s toggled by `scripts/menu.gd`
+(`_show_page`), and every node the test addresses is looked up by its
+unique name (`%MainPage`, `%PlayButton`, ...), so renaming or re-parenting a
+node inside a page does not break the test as long as `unique_name_in_owner`
+stays set. It exits `1` if any check fails or if the number of checks run
+differs from `EXPECTED_CHECKS` (12 today).
+
+| Check | What it asserts |
+|-------|-----------------|
+| `menu.pages_exist` | `%MainPage`, `%PlayPage`, `%MultiplayerPage` and `%StatusLabel` resolve. Aborts the run if not. |
+| `menu.main_first` | After `_ready` only the main page is visible. |
+| `menu.status_offline` | With no Steam the status line reads `Steam not detected: solo only`. |
+| `menu.play_opens_play_page` | Play shows the Play page and hides Main. |
+| `menu.play_back` | Back on the Play page returns to Main. |
+| `menu.multiplayer_opens_mp_page` | Play then Multiplayer shows the Multiplayer page and hides Play. |
+| `menu.host_disabled_without_steam` | `%HostButton.disabled` is true headless. |
+| `menu.host_text` | The host button reads `Host via Steam`. |
+| `menu.mp_back` | Back on the Multiplayer page returns to the Play page. |
+| `menu.solo_wired` | `%SoloButton.pressed` has exactly one connection. |
+| `menu.quit_wired` | `%QuitButton.pressed` has exactly one connection. |
+| `menu.host_wired` | `%HostButton.pressed` has exactly one connection. |
+
+Solo and Quit are never actually pressed: Solo would `change_scene_to_file`
+into the kitchen and Quit would end the process, so the test only asserts
+they are connected.

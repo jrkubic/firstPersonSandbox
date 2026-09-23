@@ -10,7 +10,7 @@ extends Node3D
 ## in NetBody.held_by, which replicates to everyone. On a client, is_holding()
 ## reads that property back rather than any local state.
 
-@export var grab_range: float = 4.0
+@export var grab_range: float = 2.5
 @export var break_distance: float = 1.75
 @export var throw_speed: float = 22.0
 @export var pull_strength: float = 25.0

@@ -72,10 +72,10 @@ theme_override_constants/margin_top = 80
 theme_override_constants/margin_right = 64
 theme_override_constants/margin_bottom = 80
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Control/MarginContainer" unique_id=1147909815]
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/MarginContainer"]
 layout_mode = 2
 
-[node name="GameTitle" type="Label" parent="Control/MarginContainer/VBoxContainer" unique_id=450847112]
+[node name="GameTitle" type="Label" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_fonts/font = SubResource("FontVariation_vjb58")
@@ -83,11 +83,16 @@ theme_override_font_sizes/font_size = 62
 text = "Jakes 3D Game"
 horizontal_alignment = 1
 
-[node name="MarginContainer" type="MarginContainer" parent="Control/MarginContainer/VBoxContainer" unique_id=1392724626]
+[node name="Spacer" type="MarginContainer" parent="Control/MarginContainer/VBoxContainer"]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 
-[node name="StartButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=753082346]
+[node name="MainPage" type="VBoxContainer" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PlayButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MainPage"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
@@ -105,29 +110,10 @@ theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg"
 theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
-text = "Solo"
+text = "Play"
 
-[node name="HostButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=939804409]
-layout_mode = 2
-size_flags_horizontal = 0
-theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
-theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
-theme_override_fonts/font = SubResource("FontVariation_con2f")
-theme_override_font_sizes/font_size = 34
-theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
-theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
-theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
-theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
-theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
-theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
-theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
-theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
-text = "Host with Steam"
-
-[node name="QuitButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=596358894]
+[node name="QuitButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MainPage"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
@@ -147,7 +133,129 @@ theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
 text = "Quit"
 
+[node name="PlayPage" type="VBoxContainer" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="SoloButton" type="Button" parent="Control/MarginContainer/VBoxContainer/PlayPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Solo"
+
+[node name="MultiplayerButton" type="Button" parent="Control/MarginContainer/VBoxContainer/PlayPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Multiplayer"
+
+[node name="PlayBackButton" type="Button" parent="Control/MarginContainer/VBoxContainer/PlayPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Back"
+
+[node name="MultiplayerPage" type="VBoxContainer" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="HostButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MultiplayerPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Host via Steam"
+
+[node name="HelpLabel" type="Label" parent="Control/MarginContainer/VBoxContainer/MultiplayerPage"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 20
+text = "Friends join through a Steam invite once you're hosting."
+
+[node name="MultiplayerBackButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MultiplayerPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Back"
+
 [node name="StatusLabel" type="Label" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_font_sizes/font_size = 20

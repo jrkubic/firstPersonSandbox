@@ -1,32 +1,63 @@
 extends CanvasLayer
+## Title menu: Play > Solo / Multiplayer > Host via Steam. Join is by Steam
+## invite only, so the Multiplayer page has a single action plus help text.
 
 @export_file("*.tscn") var game_scene: String = "res://scenes/kitchen.tscn"
 
-@onready var solo_button: Button = $Control/MarginContainer/VBoxContainer/StartButton
-@onready var host_button: Button = $Control/MarginContainer/VBoxContainer/HostButton
-@onready var quit_button: Button = $Control/MarginContainer/VBoxContainer/QuitButton
-@onready var status_label: Label = $Control/MarginContainer/VBoxContainer/StatusLabel
+@onready var main_page: Control = %MainPage
+@onready var play_page: Control = %PlayPage
+@onready var multiplayer_page: Control = %MultiplayerPage
+@onready var play_button: Button = %PlayButton
+@onready var quit_button: Button = %QuitButton
+@onready var solo_button: Button = %SoloButton
+@onready var multiplayer_button: Button = %MultiplayerButton
+@onready var play_back_button: Button = %PlayBackButton
+@onready var host_button: Button = %HostButton
+@onready var multiplayer_back_button: Button = %MultiplayerBackButton
+@onready var status_label: Label = %StatusLabel
 
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	solo_button.pressed.connect(_on_solo_pressed)
-	host_button.pressed.connect(_on_host_pressed)
+	play_button.pressed.connect(func() -> void: _show_page(play_page))
 	quit_button.pressed.connect(_on_quit_pressed)
-	host_button.disabled = not SteamManager.is_ready()
+	solo_button.pressed.connect(_on_solo_pressed)
+	multiplayer_button.pressed.connect(func() -> void: _show_page(multiplayer_page))
+	play_back_button.pressed.connect(func() -> void: _show_page(main_page))
+	host_button.pressed.connect(_on_host_pressed)
+	multiplayer_back_button.pressed.connect(func() -> void: _show_page(play_page))
+	_refresh_host_button()
 	if NetSession.last_message != "":
 		status_label.text = NetSession.last_message
 		NetSession.last_message = ""
 	elif SteamManager.is_ready():
-		status_label.text = "Steam ready as %s. Accept a friend's invite or host." % SteamManager.persona_name()
+		status_label.text = "Steam ready as %s." % SteamManager.persona_name()
 	else:
 		status_label.text = "Steam not detected: solo only"
 	NetSession.session_ended.connect(_on_session_ended)
+	_show_page(main_page)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("pause"):
+		if multiplayer_page.visible:
+			_show_page(play_page)
+		elif play_page.visible:
+			_show_page(main_page)
+
+
+func _show_page(page: Control) -> void:
+	for candidate: Control in [main_page, play_page, multiplayer_page]:
+		candidate.visible = candidate == page
+
+
+func _refresh_host_button() -> void:
+	host_button.disabled = not SteamManager.is_ready()
 
 
 func _on_session_ended(reason: String) -> void:
 	status_label.text = reason
-	host_button.disabled = not SteamManager.is_ready()
+	_refresh_host_button()
 	NetSession.last_message = ""
 
 
