@@ -91,7 +91,7 @@ Solo play and both automated tests need none of this. For Steam sessions:
 | Ctrl / C | Crouch (hold)                   |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online) |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only) |
 | F3       | Toggle debug overlay            |
 
 Grabbing is forgiving: if the centre dot narrowly misses a small item, a
