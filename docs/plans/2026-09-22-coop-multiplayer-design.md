@@ -202,8 +202,14 @@ and `ItemSpawner`. Clients see cook state only through synced properties.
   revisit holder-owned physics only if it feels bad.
 - **Chasing interpolation.** See Client smoothing.
 - **GodotSteam updater plugin** is broken on Godot 4.4+; delete the
-  `addons/godotsteam/editors/` folder after install.
-- Export must ship `steam_api64.dll` and `godotsteam.dll` next to the exe and
+  `addons/godotsteam/editor/` folder after install (4.22.1 name).
+- **GDExtension discovery.** Godot only loads extensions listed in
+  `.godot/extension_list.cfg`, written by the editor's filesystem scan. A fresh
+  clone must open the project once in the editor (or create that file with
+  `res://addons/godotsteam/godotsteam.gdextension`) before headless or
+  exported runs see Steam.
+- Export must ship `steam_api64.dll` and
+  `libgodotsteam.windows.template_release.x86_64.dll` next to the exe and
   must not ship `steam_appid.txt`.
 
 ## Out of scope

@@ -3296,10 +3296,10 @@ Expand-Archive -Path $zip -DestinationPath (Join-Path $env:TEMP "godotsteam") -F
 Get-ChildItem (Join-Path $env:TEMP "godotsteam") -Recurse -Directory | Select-Object FullName
 ```
 
-Copy the `addons/godotsteam` folder from the unpacked tree into the project so that `addons/godotsteam/godotsteam.gdextension` exists. Then delete the broken updater plugin (it has no effect on Steamworks and errors on 4.4+):
+Copy the `addons/godotsteam` folder from the unpacked tree into the project so that `addons/godotsteam/godotsteam.gdextension` exists. Then delete the broken updater plugin (it has no effect on Steamworks and errors on 4.4+; in 4.22.1 the folder is `editor/`):
 
 ```powershell
-Remove-Item -Recurse -Force addons/godotsteam/editors -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force addons/godotsteam/editor -ErrorAction SilentlyContinue
 ```
 
 **Step 2: App ID for development**
@@ -3336,11 +3336,13 @@ func _initialize() -> void:
 
 Run it from the project root with `--headless --path . --script <path>`. Expected output: both `true`. If `false`, the `.gdextension` file is not at `addons/godotsteam/godotsteam.gdextension` or the zip was for the wrong godot-cpp line.
 
+Finding from execution: Godot only loads GDExtensions listed in `.godot/extension_list.cfg`, which the editor writes on its filesystem scan. Without one editor launch, headless and windowed runs print `false`. Either open the project once in the editor, or create `.godot/extension_list.cfg` containing the single line `res://addons/godotsteam/godotsteam.gdextension`. `.godot/` is git-ignored, so a fresh clone needs this step; document it in the README (Task 9).
+
 Run the smoke and net tests again: both must still pass with the extension loaded (SteamManager skips init headless).
 
 **Step 5: Manual Steam test (two accounts, two PCs or one PC + a VM)**
 
-Both machines need Steam running and logged in to *different* accounts that are Steam friends. Add the Godot editor's *run* target as a Non-Steam Game on each (Steam > Add a Game > Add a Non-Steam Game, pointing at the Godot exe with `--path C:\Projects\firstPersonSandbox` as launch options) so the overlay works; alternatively export a Windows build (`Project > Export`, ship `steam_api64.dll` + `godotsteam.dll` next to the exe, no `steam_appid.txt`) and add that exe instead.
+Both machines need Steam running and logged in to *different* accounts that are Steam friends. Add the Godot editor's *run* target as a Non-Steam Game on each (Steam > Add a Game > Add a Non-Steam Game, pointing at the Godot exe with `--path C:\Projects\firstPersonSandbox` as launch options) so the overlay works; alternatively export a Windows build (`Project > Export`, ship `steam_api64.dll` + `libgodotsteam.windows.template_release.x86_64.dll` (from `addons/godotsteam/win64/`) next to the exe, no `steam_appid.txt`) and add that exe instead.
 
 Checklist (record results in the README's "Steam checklist" table):
 
@@ -3379,7 +3381,7 @@ git commit -m "GodotSteam 4.22.1 setup: dev app id, ignore binaries, Steam check
 **Step 1: README**
 
 - **Status**: add a bullet `**Co-op shipped <date>:** Steam lobbies via GodotSteam, up to 4 players, host-authoritative physics, practice kitchen lobby, in-place run reset, two-peer ENet regression test.` and change "Next candidates" to `recipe variety, art pass, holder-owned physics if held-item lag bites`.
-- **How to run**: add a `Co-op setup` subsection: install GodotSteam per Task 8 (link the releases page, note the `editors/` deletion and `steam_appid.txt`), Steam must be running, add the exe as a Non-Steam Game for the overlay.
+- **How to run**: add a `Co-op setup` subsection: install GodotSteam per Task 8 (link the releases page; note the `editor/` deletion, `steam_appid.txt`, and that a fresh clone must open the project once in the editor or create `.godot/extension_list.cfg` with `res://addons/godotsteam/godotsteam.gdextension` before Steam loads; exports ship `steam_api64.dll` + `libgodotsteam.windows.template_release.x86_64.dll`), Steam must be running, add the exe as a Non-Steam Game for the overlay.
 - **How to play**: add `Co-op` steps: Host with Steam, Escape > Invite friends, guests accept, practice together, host Escape > Start Run, end screen Back to Practice.
 - **Controls** table: add `Escape` row text `Pause menu (solo) / session menu with Invite and Start Run (online)`.
 - **Debug overlay**: add `net.role`, `net.peer`, `net.players`, `net.mode`.
