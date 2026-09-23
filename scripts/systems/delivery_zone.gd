@@ -26,18 +26,10 @@ func _physics_process(_delta: float) -> void:
 			continue
 		if plate.is_in_group(Groups.HELD):
 			continue
-		if _has_held_contents(plate):
+		if plate.has_held_contents():
 			continue
 		if _order_system.check_delivery(plate):
 			_deliver(plate)
-
-
-func _has_held_contents(plate: Plate) -> bool:
-	for food in plate.get_contents():
-		if is_instance_valid(food) and food.is_in_group(Groups.HELD):
-			return true
-	return false
-
 
 func _on_body_entered(body: Node) -> void:
 	if body is Plate and not _plates_inside.has(body):

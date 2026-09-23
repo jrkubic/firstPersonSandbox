@@ -23,18 +23,9 @@ func _physics_process(_delta: float) -> void:
 		if not is_instance_valid(body) or body.is_queued_for_deletion():
 			_inside.erase(body)
 			continue
-		if body.is_in_group(Groups.HELD) or _has_held_contents(body):
+		if body.is_in_group(Groups.HELD) or (body is Plate and (body as Plate).has_held_contents()):
 			continue
 		_bin(body)
-
-
-func _has_held_contents(body: RigidBody3D) -> bool:
-	if body is Plate:
-		for food in (body as Plate).get_contents():
-			if is_instance_valid(food) and food.is_in_group(Groups.HELD):
-				return true
-	return false
-
 
 func _on_body_entered(body: Node) -> void:
 	if body is RigidBody3D and body.is_in_group(Groups.GRABBABLE) and not _inside.has(body):
