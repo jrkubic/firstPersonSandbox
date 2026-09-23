@@ -5,7 +5,7 @@ extends Node3D
 ## grey-box game. The camera sways gently in front of the set, which sits in
 ## the right ~60% of the frame so the menu column on the left stays clear.
 
-const FLOOR_COLOR := Color(0.66, 0.60, 0.52)
+const FLOOR_COLOR := Color(0.58, 0.50, 0.42)
 const WALL_COLOR := Color(0.88, 0.84, 0.76)
 const COUNTER_COLOR := Color(0.55, 0.42, 0.32)
 const STOVE_COLOR := Color(0.25, 0.26, 0.30)
@@ -21,14 +21,14 @@ const APRON_COLORS: Array[Color] = [Color(0.85, 0.25, 0.2), Color(0.2, 0.45, 0.8
 const STOVE_POS := Vector3(-1.2, 0.0, -1.4)
 const COUNTER_POS := Vector3(2.0, 0.0, -1.4)
 const PASS_POS := Vector3(0.4, 0.0, -2.6)
-const ORBIT_RADIUS := 5.4
+const ORBIT_RADIUS := 5.8
 const ORBIT_HEIGHT := 2.5
 const SWAY_CENTER := 0.25    # radians; camera sits right of centre
 const SWAY_AMPLITUDE := 0.35
 const SWAY_SPEED := 0.25     # radians per second of the sway phase
 # Aimed left of the set's centre: the camera sits on the +x side, so looking
 # left of centre keeps the whole set in the right ~60% of the frame.
-const LOOK_AT := Vector3(-0.9, 0.8, -0.7)
+const LOOK_AT := Vector3(-1.2, 0.8, -0.7)
 
 @onready var _chefs_root: Node3D = $Chefs
 @onready var _camera: Camera3D = $Camera3D
@@ -84,8 +84,10 @@ func _build_environment() -> void:
 func _build_set() -> void:
 	_box(Vector3(0.0, -0.1, -0.8), Vector3(8.0, 0.2, 6.0), FLOOR_COLOR)          # floor
 	_box(Vector3(0.0, 1.5, -3.6), Vector3(16.0, 3.0, 0.2), WALL_COLOR)           # back wall
-	_box(Vector3(-3.6, 1.5, -0.8), Vector3(0.2, 3.0, 5.6), WALL_COLOR)           # left wall
-	_box(Vector3(3.6, 1.5, -0.8), Vector3(0.2, 3.0, 5.6), WALL_COLOR)            # right wall
+	# Left wall only: the camera sits on +x and never sees a right wall at this
+	# sway, and a right wall would throw a dark wedge across the floor.
+	var left_wall := _box(Vector3(-3.6, 1.5, -0.8), Vector3(0.2, 3.0, 5.6), WALL_COLOR)
+	left_wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# Pass window: a shelf through the wall with two plates waiting.
 	_box(PASS_POS + Vector3(0.0, 0.5, -0.6), Vector3(2.2, 1.0, 0.5), PASS_COLOR)
 	_box(PASS_POS + Vector3(0.0, 1.9, -0.9), Vector3(2.4, 0.15, 0.6), PASS_COLOR)  # window header
