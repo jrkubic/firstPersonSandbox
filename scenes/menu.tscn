@@ -105,9 +105,9 @@ theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg"
 theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
-text = "Start Game"
+text = "Solo"
 
-[node name="SettingsButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=939804409]
+[node name="HostButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=939804409]
 layout_mode = 2
 size_flags_horizontal = 0
 theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
@@ -125,7 +125,7 @@ theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg"
 theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
-text = "Settings"
+text = "Host with Steam"
 
 [node name="QuitButton" type="Button" parent="Control/MarginContainer/VBoxContainer" unique_id=596358894]
 layout_mode = 2
@@ -146,3 +146,9 @@ theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
 text = "Quit"
+
+[node name="StatusLabel" type="Label" parent="Control/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_font_sizes/font_size = 20
+text = ""

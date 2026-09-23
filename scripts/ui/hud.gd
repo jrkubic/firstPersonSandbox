@@ -1,4 +1,7 @@
 extends CanvasLayer
+## Delivered counter and timer. Reads KitchenLoop every frame so it works
+## on clients, where the delivered signal never fires; the +1 popup keys
+## off the replicated counter going up.
 
 @export_node_path("DeliveryZone") var delivery_zone_path: NodePath
 @export_node_path("KitchenLoop") var kitchen_loop_path: NodePath
@@ -10,23 +13,21 @@ extends CanvasLayer
 
 var _zone: DeliveryZone
 var _kitchen_loop: KitchenLoop
+var _last_deliveries: int = 0
 
 
 func _ready() -> void:
 	_zone = get_node(delivery_zone_path)
 	_kitchen_loop = get_node(kitchen_loop_path)
-	_zone.delivered.connect(_on_delivered)
-	_refresh_delivered_label()
-	_refresh_timer_label()
+	_last_deliveries = _kitchen_loop.deliveries_made
+	_refresh()
 
 
 func _process(_delta: float) -> void:
-	_refresh_timer_label()
-
-
-func _on_delivered() -> void:
-	call_deferred("_refresh_delivered_label")
-	_spawn_popup()
+	if _kitchen_loop.deliveries_made > _last_deliveries:
+		_spawn_popup()
+	_last_deliveries = _kitchen_loop.deliveries_made
+	_refresh()
 
 
 func _spawn_popup() -> void:
@@ -37,16 +38,11 @@ func _spawn_popup() -> void:
 	popup.global_position = _zone.global_position + popup_offset
 
 
-func _refresh_delivered_label() -> void:
-	if _kitchen_loop == null:
+func _refresh() -> void:
+	if _kitchen_loop.practice:
+		delivered_label.text = "Practice  Delivered: %d" % _kitchen_loop.deliveries_made
+		timer_label.text = "--:--"
 		return
 	delivered_label.text = "Delivered: %d/%d" % [_kitchen_loop.deliveries_made, _kitchen_loop.delivery_goal]
-
-
-func _refresh_timer_label() -> void:
-	if _kitchen_loop == null:
-		return
 	var t: float = _kitchen_loop.elapsed_time
-	var minutes: int = int(t) / 60
-	var seconds: int = int(t) % 60
-	timer_label.text = "%d:%02d" % [minutes, seconds]
+	timer_label.text = "%d:%02d" % [int(t) / 60, int(t) % 60]
