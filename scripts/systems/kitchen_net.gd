@@ -16,14 +16,17 @@ const PLAYER_SCENE: PackedScene = preload("res://scenes/player.tscn")
 @export_node_path("KitchenLoop") var kitchen_loop_path: NodePath = NodePath("../KitchenLoop")
 @export_node_path("OrderSystem") var order_system_path: NodePath = NodePath("../OrderSystem")
 
+## Emitted when mode actually changes (and once on a client's _ready), not
+## on every replicated write of the same value.
 signal mode_changed(new_mode: Mode)
 
 ## Replicated on change (net_sync.tres). Solo play is always RUN; an online
 ## session starts in PRACTICE until the host starts a run.
 var mode: Mode = Mode.RUN:
 	set(value):
+		var changed: bool = mode != value
 		mode = value
-		_apply_mode()
+		_apply_mode(changed)
 
 @onready var _players: Node3D = get_node(players_path)
 @onready var _items: Node3D = get_node(items_path)
@@ -31,6 +34,10 @@ var mode: Mode = Mode.RUN:
 @onready var _loop: KitchenLoop = get_node(kitchen_loop_path)
 @onready var _orders: OrderSystem = get_node(order_system_path)
 @onready var _player_spawner: MultiplayerSpawner = $PlayerSpawner
+
+## True while reset_kitchen is mid-await, so an overlapping call (double
+## Start Run) cannot refill the spawners twice.
+var _resetting: bool = false
 
 
 func _ready() -> void:
@@ -42,14 +49,16 @@ func _ready() -> void:
 		multiplayer.peer_connected.connect(_on_peer_connected)
 		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	else:
-		_apply_mode()
+		_apply_mode(true)
 		multiplayer.connected_to_server.connect(_on_connected_to_server)
 	NetSession.kitchen_ready()
 	call_deferred("_register_debug_watches")
 
 
+## Players still in the kitchen (a leaver's node is queue_free'd but stays a
+## child until the end of the frame).
 func player_count() -> int:
-	return _players.get_child_count()
+	return _live_players().size()
 
 
 func get_player(peer_id: int) -> Player:
@@ -73,16 +82,21 @@ func spawn_player(peer_id: int) -> Player:
 	return _player_spawner.spawn([peer_id, point.global_position]) as Player
 
 
+func _live_players() -> Array[Player]:
+	var live: Array[Player] = []
+	for node in _players.get_children():
+		if not node.is_queued_for_deletion():
+			live.append(node as Player)
+	return live
+
+
 ## First spawn point with no current Player within 1 m of it; when every
 ## point is taken, cycles through them by player count.
 func _free_spawn_point() -> Node3D:
 	for point in _spawn_points.get_children():
 		var taken: bool = false
-		for player in _players.get_children():
-			if player.is_queued_for_deletion():
-				continue
-			if (player as Node3D).global_position.distance_to(
-					(point as Node3D).global_position) < 1.0:
+		for player in _live_players():
+			if player.global_position.distance_to((point as Node3D).global_position) < 1.0:
 				taken = true
 				break
 		if not taken:
@@ -143,29 +157,37 @@ func return_to_practice() -> void:
 ## Host only. Drops every held item, clears every item, returns every player
 ## to a spawn point, refills the spawners and restarts the loop in new_mode.
 ## No scene change: the spawners and synchronizers on every peer stay put.
+## A call that overlaps one already in progress is ignored.
 func reset_kitchen(new_mode: Mode) -> void:
 	if not NetSession.is_authority():
 		return
-	for node in _players.get_children():
-		(node as Player).grab_controller.force_release()
+	if _resetting:
+		return
+	_resetting = true
+	for player in _live_players():
+		player.grab_controller.force_release()
 	for item in _items.get_children():
 		item.queue_free()
 	await get_tree().process_frame
-	for i in range(_players.get_child_count()):
-		var player: Player = _players.get_child(i) as Player
-		player.send_teleport(_spawn_point_for(i).global_position)
+	var live: Array[Player] = _live_players()
+	for i in range(live.size()):
+		live[i].send_teleport(_spawn_point_for(i).global_position)
 	_loop.reset()
 	get_tree().paused = false
 	for node in get_tree().get_nodes_in_group(Groups.SPAWNER):
 		(node as ItemSpawner).spawn()
 	mode = new_mode
+	_resetting = false
 
 
-func _apply_mode() -> void:
+## Pushes mode into the loop on every write; emits mode_changed only when
+## the value changed (or when forced, for a client's first apply).
+func _apply_mode(changed: bool) -> void:
 	if _loop == null:
 		return  # setter ran before _ready (synchronizer spawn state)
 	_loop.practice = mode == Mode.PRACTICE
-	mode_changed.emit(mode)
+	if changed:
+		mode_changed.emit(mode)
 
 
 # --- Late-join state and names ----------------------------------------------
