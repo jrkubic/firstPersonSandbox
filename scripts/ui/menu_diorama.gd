@@ -229,7 +229,7 @@ func _start_steam(at: Vector3) -> void:
 	mesh.radius = 0.06
 	mesh.height = 0.12
 	var puff := StandardMaterial3D.new()
-	puff.albedo_color = Color(1.0, 1.0, 1.0, 0.35)
+	puff.albedo_color = Color(1.0, 1.0, 1.0, 1.0)  # alpha comes from the process material colour
 	puff.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	puff.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	puff.vertex_color_use_as_albedo = true  # lets the process material's colour apply
