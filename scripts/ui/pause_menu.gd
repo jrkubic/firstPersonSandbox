@@ -4,6 +4,8 @@ extends CanvasLayer
 ## Start Run here because the mouse is captured while playing.
 
 @export_file("*.tscn") var menu_scene: String = "res://scenes/menu.tscn"
+## Escape is ignored while the end screen is showing.
+@export_node_path("CanvasLayer") var end_screen_path: NodePath
 
 @onready var resume_button: Button = $MarginContainer/VBoxContainer/ResumeButton
 @onready var invite_button: Button = $MarginContainer/VBoxContainer/InviteButton
@@ -12,12 +14,15 @@ extends CanvasLayer
 @onready var quit_button: Button = $MarginContainer/VBoxContainer/QuitButton
 
 var _net: KitchenNet
+var _end_screen: CanvasLayer
 
 
 func _ready() -> void:
 	process_mode = PROCESS_MODE_ALWAYS
 	visible = false
 	_net = get_tree().get_first_node_in_group(Groups.KITCHEN_NET) as KitchenNet
+	if not end_screen_path.is_empty():
+		_end_screen = get_node_or_null(end_screen_path) as CanvasLayer
 	resume_button.pressed.connect(_resume)
 	invite_button.pressed.connect(_on_invite_pressed)
 	start_run_button.pressed.connect(_on_start_run_pressed)
@@ -27,6 +32,8 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
+		if _end_screen != null and _end_screen.visible:
+			return
 		if visible:
 			_resume()
 		else:

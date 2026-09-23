@@ -42,10 +42,12 @@ text = "Resume"
 
 [node name="InviteButton" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "Invite friends"
 
 [node name="StartRunButton" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+theme_override_font_sizes/font_size = 24
 text = "Start Run"
 
 [node name="MenuButton" type="Button" parent="MarginContainer/VBoxContainer"]

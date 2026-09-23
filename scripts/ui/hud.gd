@@ -24,7 +24,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _kitchen_loop.deliveries_made > _last_deliveries:
+	# Exactly +1: a late joiner sees the counter jump 0 -> N and gets no popup.
+	if _kitchen_loop.deliveries_made == _last_deliveries + 1:
 		_spawn_popup()
 	_last_deliveries = _kitchen_loop.deliveries_made
 	_refresh()

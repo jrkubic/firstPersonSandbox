@@ -21,7 +21,13 @@ func _ready() -> void:
 		status_label.text = "Steam ready as %s. Accept a friend's invite or host." % SteamManager.persona_name()
 	else:
 		status_label.text = "Steam not detected: solo only"
-	NetSession.session_ended.connect(func(reason: String) -> void: status_label.text = reason)
+	NetSession.session_ended.connect(_on_session_ended)
+
+
+func _on_session_ended(reason: String) -> void:
+	status_label.text = reason
+	host_button.disabled = not SteamManager.is_ready()
+	NetSession.last_message = ""
 
 
 func _on_solo_pressed() -> void:
@@ -36,4 +42,5 @@ func _on_host_pressed() -> void:
 
 
 func _on_quit_pressed() -> void:
+	NetSession.leave()
 	get_tree().quit()

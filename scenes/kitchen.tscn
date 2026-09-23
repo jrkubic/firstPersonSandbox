@@ -327,6 +327,7 @@ order_system_path = NodePath("../../OrderSystem")
 [node name="DebugOverlay" parent="." instance=ExtResource("2_overlay")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("11_pause_menu")]
+end_screen_path = NodePath("../EndScreen")
 
 [node name="HUD" parent="." instance=ExtResource("12_hud")]
 delivery_zone_path = NodePath("../Pass/DeliveryZone")
@@ -336,4 +337,5 @@ popup_scene = ExtResource("13_score_popup")
 [node name="LobbyPanel" parent="." instance=ExtResource("19_lobby_panel")]
 
 [node name="EndScreen" parent="." instance=ExtResource("14_end_screen")]
+pause_menu_path = NodePath("../PauseMenu")
 kitchen_loop_path = NodePath("../KitchenLoop")

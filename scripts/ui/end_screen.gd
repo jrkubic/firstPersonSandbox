@@ -5,6 +5,8 @@ extends CanvasLayer
 
 @export_file("*.tscn") var menu_scene: String = "res://scenes/menu.tscn"
 @export_node_path("KitchenLoop") var kitchen_loop_path: NodePath
+## Hiding recaptures the mouse only when the Escape menu is not open.
+@export_node_path("CanvasLayer") var pause_menu_path: NodePath
 
 @onready var title_label: Label = $MarginContainer/VBoxContainer/TitleLabel
 @onready var stars_label: Label = $MarginContainer/VBoxContainer/StarsLabel
@@ -16,6 +18,7 @@ extends CanvasLayer
 
 var _loop: KitchenLoop
 var _net: KitchenNet
+var _pause_menu: CanvasLayer
 
 
 func _ready() -> void:
@@ -23,6 +26,8 @@ func _ready() -> void:
 	visible = false
 	_loop = get_node(kitchen_loop_path)
 	_net = get_tree().get_first_node_in_group(Groups.KITCHEN_NET) as KitchenNet
+	if not pause_menu_path.is_empty():
+		_pause_menu = get_node_or_null(pause_menu_path) as CanvasLayer
 	play_again_button.pressed.connect(_on_play_again_pressed)
 	practice_button.pressed.connect(_on_practice_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
@@ -35,13 +40,19 @@ func _process(_delta: float) -> void:
 		_show()
 	elif not won and visible:
 		_hide()
+	elif visible:
+		# On clients state and elapsed_time arrive in separate packets.
+		_refresh_labels()
+
+
+func _refresh_labels() -> void:
+	stars_label.text = _stars_text(_loop.get_stars())
+	time_label.text = "Time: %s" % _format_time(_loop.elapsed_time)
 
 
 func _show() -> void:
-	var stars: int = _loop.get_stars()
 	title_label.text = "Service Complete"
-	stars_label.text = _stars_text(stars)
-	time_label.text = "Time: %s" % _format_time(_loop.elapsed_time)
+	_refresh_labels()
 	var host: bool = NetSession.is_authority()
 	play_again_button.visible = host
 	practice_button.visible = host and NetSession.is_online()
@@ -55,7 +66,8 @@ func _show() -> void:
 func _hide() -> void:
 	visible = false
 	get_tree().paused = false
-	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if _pause_menu == null or not _pause_menu.visible:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 func _on_play_again_pressed() -> void:
