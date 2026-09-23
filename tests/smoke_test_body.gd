@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 97
+const EXPECTED_CHECKS: int = 104
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -42,6 +42,7 @@ const STIR_DRIFT: float = 0.05
 # radius 0.07) sits ~0.174 m off-axis; anything under this is still "in the
 # pan" (the disc radius is 0.25 and the CookSlot box half-extent is 0.2).
 const PAN_RIM_DRIFT: float = 0.2
+const TRASH_ZONE_POS: Vector3 = Vector3(4.0, 0.5, 1.5)  # inside the bin, see scenes/trash_can.tscn
 
 var _passed: int = 0
 var _failed: int = 0
@@ -112,6 +113,7 @@ func _run() -> void:
 	await _check_held_egg(pan)
 	await _check_occupied_slot(pan)
 	await _check_walk()
+	await _check_trash()
 	_finish()
 
 
@@ -824,6 +826,52 @@ func _check_walk() -> void:
 	_player.global_position = start
 	_player.velocity = Vector3.ZERO
 	await _step(2)
+
+
+## Anything unheld dropped in the bin is freed and its own spawner produces a
+## replacement; a held item is safe until released.
+func _check_trash() -> void:
+	var egg: FoodItem = _first_food()
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	var pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
+	if not _check("trash.setup", egg != null and plate != null and pan != null and not _grab.is_holding(),
+			"egg=%s plate=%s pan=%s holding=%s" % [egg != null, plate != null, pan != null, _grab.is_holding()]):
+		return
+
+	# Held egg: safe inside the bin until released.
+	egg.add_to_group("held")
+	_teleport(egg, TRASH_ZONE_POS)
+	await _step(30)
+	_check("trash.held_survives", is_instance_valid(egg), "held egg was binned")
+	egg.remove_from_group("held")
+	var freed: int = await _wait_until(func() -> bool: return not is_instance_valid(egg), 30)
+	_check("trash.egg_freed", freed >= 0, "released egg still alive after 30 frames")
+	await _step(5)
+	var new_egg: FoodItem = _first_food()
+	_check("trash.egg_replaced",
+		new_egg != null and get_tree().get_nodes_in_group("food").size() == 1
+		and not _egg_spawner.is_slot_free(),
+		"eggs=%d slot_free=%s" % [get_tree().get_nodes_in_group("food").size(), _egg_spawner.is_slot_free()])
+
+	# Pan: binned and replaced on the stove even though pans never refill on delivery.
+	_teleport(pan, TRASH_ZONE_POS)
+	var pan_freed: int = await _wait_until(func() -> bool: return not is_instance_valid(pan), 30)
+	_check("trash.pan_freed", pan_freed >= 0, "pan still alive after 30 frames")
+	await _step(30)
+	var new_pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
+	_check("trash.pan_replaced",
+		new_pan != null and get_tree().get_nodes_in_group("pan").size() == 1 and new_pan.is_on_stove(),
+		"pans=%d on_stove=%s" % [get_tree().get_nodes_in_group("pan").size(),
+			new_pan.is_on_stove() if new_pan else false])
+
+	# Plate with nothing on it.
+	_teleport(plate, TRASH_ZONE_POS)
+	var plate_freed: int = await _wait_until(func() -> bool: return not is_instance_valid(plate), 30)
+	await _step(5)
+	_check("trash.plate_replaced",
+		plate_freed >= 0 and get_tree().get_nodes_in_group("plate").size() == 1
+		and not _plate_spawner.is_slot_free(),
+		"freed=%s plates=%d" % [plate_freed >= 0, get_tree().get_nodes_in_group("plate").size()])
 
 
 # ---------------------------------------------------------------------------

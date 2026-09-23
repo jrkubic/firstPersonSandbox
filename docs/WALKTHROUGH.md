@@ -95,6 +95,7 @@ F throw, Escape pause, F3 overlay.
 | Egg flies out when grabbing the pan | — | **Known open bug** (the grab snaps the pan's velocity). Carry the egg separately | Plan backlog, `tests/README.md` → `carry.pan_keeps_egg` |
 | Stuck crouched | `crouched` | Ceiling over the standing capsule (order board underside is 1.9 m) | `Player._has_stand_clearance()` |
 | No new egg or plate after delivery | Remote tree | Previous item still within `slot_radius` (0.35 m) of its spawner, so the slot counts as full | `ItemSpawner.is_slot_free()`, `kitchen_loop.gd` |
+| Item vanished | Remote tree, host log | It landed in the green bin by the plate rack: the trash zone (`TrashZone`, authority only) frees any unheld grabbable inside it and asks the spawner that produced it to spawn a replacement | `scripts/systems/trash_zone.gd`, `scenes/trash_can.tscn`, `ItemSpawner.replace()` |
 | Item falls through a counter or floor | Remote → `collision_mask` | Items need mask 7 (World + Player + Items) | `scenes/items/*.tscn` |
 | Egg hangs in mid-air | Remote → `sleeping` | Should not happen (`can_sleep = false` on food); if it does, something reset it | `scripts/items/food_item.gd` |
 

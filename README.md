@@ -66,6 +66,9 @@ Solo play and the automated tests need none of this. For Steam sessions:
 6. A fresh plate and egg respawn automatically. Repeat; after the third
    delivery the end screen shows your time and star rating.
 
+Drop anything into the green bin by the plate rack to trash it; a fresh one
+appears at its station.
+
 ### Co-op
 
 1. Host presses **Host with Steam**. The kitchen loads in practice mode: no
@@ -140,7 +143,7 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 97 checks are:
+watchdog trips. The 104 checks are:
 
 - `boot.*` (5) — kitchen loads and is wired; exactly one egg, plate, pan and
   stove; egg `RAW`; pan on the stove; nothing held
@@ -180,6 +183,9 @@ watchdog trips. The 97 checks are:
   not spawn a second one
 - `walk.*` (2) — holding `walk` settles the player at
   `move_speed * walk_speed_multiplier`; releasing it restores full speed
+- `trash.*` (7) — a held egg in the bin survives; once released it is freed
+  and its spawner refills; a binned pan and empty plate are replaced the
+  same way (the pan back on the stove)
 
 Determinism notes, per-check details and how to add a check: `tests/README.md`.
 
@@ -318,7 +324,8 @@ number decides whether holder-owned physics is worth building.
 
 ## Project layout
 
-- `scenes/` — `menu.tscn`, `kitchen.tscn`, `player.tscn`,
+- `scenes/` — `menu.tscn`, `kitchen.tscn`, `player.tscn`, `trash_can.tscn`
+  (the bin instanced in the kitchen; its `TrashZone` bins unheld items),
   `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.tscn`
   (`menu_diorama.tscn` is the animated primitive kitchen behind the title
   menu),
@@ -329,7 +336,7 @@ number decides whether holder-owned physics is worth building.
   constants), `items/{food_item,pan,plate}.gd`,
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
   Steam autoload, per-item replication and smoothing),
-  `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
+  `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,trash_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
   `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.gd`
   (`menu_diorama.gd` builds the menu's flat-shaded kitchen and three tweened
   capsule chefs from primitives in `_ready`; no art assets)

@@ -18,6 +18,7 @@
 [ext_resource type="SceneReplicationConfig" path="res://scenes/sync/orders_sync.tres" id="17_orders_sync"]
 [ext_resource type="SceneReplicationConfig" path="res://scenes/sync/net_sync.tres" id="18_net_sync"]
 [ext_resource type="PackedScene" path="res://scenes/ui/lobby_panel.tscn" id="19_lobby_panel"]
+[ext_resource type="PackedScene" path="res://scenes/trash_can.tscn" id="20_trash_can"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -257,6 +258,9 @@ script = ExtResource("9_item_spawner")
 item_scene = ExtResource("5_plate")
 min_players = 2
 spawn_parent_path = NodePath("../../Items")
+
+[node name="TrashCan" parent="." instance=ExtResource("20_trash_can")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, 1.5)
 
 [node name="OrderSystem" type="Node" parent="."]
 script = ExtResource("6_order_system")

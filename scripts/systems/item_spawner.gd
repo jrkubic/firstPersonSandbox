@@ -38,6 +38,7 @@ func spawn() -> Node:
 	var instance: Node = item_scene.instantiate()
 	_serial += 1
 	instance.name = "%s%d" % [instance.name, _serial]
+	instance.set_meta(&"spawner_path", get_path())
 	var parent: Node = _get_spawn_parent()
 	if instance is Node3D:
 		var local: Vector3 = global_position
@@ -66,6 +67,14 @@ func is_slot_free() -> bool:
 ## True once this spawner has produced anything, even if it has since left.
 func has_spawned() -> bool:
 	return _last_spawned != null
+
+
+## Called by TrashZone after binning an item this spawner produced. Spawns a
+## replacement next frame if the binned item was this spawner's current one
+## (an older, already-replaced item does not trigger a second spawn).
+func replace(binned: Node) -> void:
+	if binned == _last_spawned:
+		call_deferred("spawn")
 
 
 func _player_count() -> int:
