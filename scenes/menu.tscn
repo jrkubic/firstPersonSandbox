@@ -78,6 +78,7 @@ text = "Jakes 3D Game"
 horizontal_alignment = 1
 
 [node name="Spacer" type="MarginContainer" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 

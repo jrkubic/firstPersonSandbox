@@ -5,6 +5,7 @@ extends CanvasLayer
 
 @export_file("*.tscn") var game_scene: String = "res://scenes/kitchen.tscn"
 
+@onready var spacer: Control = %Spacer
 @onready var main_page: Control = %MainPage
 @onready var play_page: Control = %PlayPage
 @onready var multiplayer_page: Control = %MultiplayerPage
@@ -54,6 +55,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _show_page(page: Control) -> void:
 	for candidate: Control in [main_page, play_page, multiplayer_page, settings_page]:
 		candidate.visible = candidate == page
+	# The Settings page is tall (one row per action); drop the gap under the
+	# title so the whole page fits at 720p.
+	spacer.visible = page != settings_page
 
 
 func _refresh_host_button() -> void:

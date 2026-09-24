@@ -26,24 +26,27 @@ func key_button(action: StringName) -> Button:
 
 
 func _build() -> void:
+	# Compact sizes so title + 10 rows + slider + buttons fit at 720p.
+	add_theme_constant_override("separation", 4)
 	var title := Label.new()
 	title.text = "Controls"
-	title.add_theme_font_size_override("font_size", 34)
+	title.add_theme_font_size_override("font_size", 28)
 	add_child(title)
 
 	_rows = GridContainer.new()
 	_rows.name = "Rows"
 	_rows.columns = 2
-	_rows.add_theme_constant_override("h_separation", 24)
+	_rows.add_theme_constant_override("h_separation", 16)
+	_rows.add_theme_constant_override("v_separation", 0)
 	add_child(_rows)
 	for action: StringName in Settings.REBINDABLE:
 		var label := Label.new()
 		label.text = Settings.ACTION_LABELS.get(action, String(action))
-		label.add_theme_font_size_override("font_size", 22)
+		label.add_theme_font_size_override("font_size", 20)
 		_rows.add_child(label)
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(160, 0)
-		button.add_theme_font_size_override("font_size", 22)
+		button.custom_minimum_size = Vector2(150, 32)
+		button.add_theme_font_size_override("font_size", 20)
 		button.pressed.connect(_on_key_button_pressed.bind(action))
 		_rows.add_child(button)
 		_buttons[action] = button
@@ -70,14 +73,14 @@ func _build() -> void:
 	var reset := Button.new()
 	reset.name = "ResetButton"
 	reset.text = "Reset to defaults"
-	reset.add_theme_font_size_override("font_size", 24)
+	reset.add_theme_font_size_override("font_size", 20)
 	reset.pressed.connect(func() -> void: Settings.reset_to_defaults())
 	buttons.add_child(reset)
 	_expose(reset)
 	var back := Button.new()
 	back.name = "SettingsBackButton"
 	back.text = "Back"
-	back.add_theme_font_size_override("font_size", 24)
+	back.add_theme_font_size_override("font_size", 20)
 	back.pressed.connect(func() -> void:
 		_stop_listening()
 		back_pressed.emit())
