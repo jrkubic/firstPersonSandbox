@@ -23,6 +23,7 @@ window/stretch/mode="canvas_items"
 
 [autoload]
 
+Settings="*res://scripts/settings.gd"
 SteamManager="*res://scripts/net/steam_manager.gd"
 NetSession="*res://scripts/net/net_session.gd"
 

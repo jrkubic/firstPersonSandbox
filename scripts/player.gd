@@ -11,7 +11,6 @@ extends CharacterBody3D
 @export var air_control := 0.3
 @export var jump_velocity := 9.0
 @export var gravity := 25.0
-@export var mouse_sensitivity := 0.0022
 @export_range(-89.0, 0.0) var min_pitch := -85.0
 @export_range(0.0, 89.0) var max_pitch := 85.0
 
@@ -92,8 +91,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * mouse_sensitivity)
-		head.rotate_x(-event.relative.y * mouse_sensitivity)
+		rotate_y(-event.relative.x * Settings.mouse_sensitivity)
+		head.rotate_x(-event.relative.y * Settings.mouse_sensitivity)
 		head.rotation.x = clamp(
 			head.rotation.x,
 			deg_to_rad(min_pitch),
