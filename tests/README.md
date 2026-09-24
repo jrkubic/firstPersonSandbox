@@ -176,6 +176,8 @@ The client, in order:
 | `client.egg_parent` | The egg's parent is the kitchen's `Items` node. |
 | `client.cook_progress_syncs` | `cook_progress` climbs past 0.25 while the host cooks. |
 | `client.state_syncs` | `state` becomes `COOKED`. |
+| `client.order_index_syncs` | `OrderSystem.current_index` becomes 1 within 10 s (`orders_sync.tres` replicates it on change). Checked here, while the ticket is guaranteed to be on recipe 1: the host set it before cooking and only switches back after our grab and release. |
+| `client.order_board_text` | One process frame later `OrderBoard/TicketLabel.text` reads `1× Egg on Toast`. |
 | `client.position_syncs` | The egg ends up within 0.5 m of the host's counter park position. |
 | `client.late_join_held_by` | The plate the host grabbed before we joined arrives with `held_by == 1`. |
 | `client.late_join_held_group` | ...and is in the `held` group locally. |
@@ -185,8 +187,6 @@ The client, in order:
 | `client.release_rpc` | `request_release` clears `is_holding()` and `held_by` goes back to `NOBODY` within 5 s. |
 | `client.practice_mode_on_join` | `KitchenNet.mode` is `PRACTICE` (came through the full-state RPC on join). |
 | `client.names_synced` | `NetSession.peer_names` has entries for peer 1 and for us. |
-| `client.order_index_syncs` | `OrderSystem.current_index` becomes 1 within 10 s (`orders_sync.tres` replicates it on change). |
-| `client.order_board_text` | One process frame later `OrderBoard/TicketLabel.text` reads `1× Egg on Toast`. Read right after our release: the host keeps the ticket on recipe 1 for 12+ frames after seeing that release before switching back to deliver. |
 | `client.delivery_syncs` | `deliveries_made == 1` after the host's delivery. |
 | `client.mode_syncs` | Mode flips to `RUN` after the host's `start_run()`. |
 | `client.teleport_rpc` | Our player is within 0.5 m of `SpawnPoint1` — the owning-peer teleport RPC moved a body we have authority over. |

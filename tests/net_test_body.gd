@@ -191,6 +191,14 @@ func _run_client() -> void:
 	var cooked: int = await _wait_until(
 		func() -> bool: return egg.state == FoodItem.State.COOKED, PHYSICS_TPS * 20)
 	_check("client.state_syncs", cooked >= 0, "state=%s" % egg.state_name())
+	# The host set recipe 1 before cooking and does not switch back until
+	# after our grab and release, so this window is wide (several seconds).
+	var order_synced: int = await _wait_until(
+		func() -> bool: return _orders.current_index == 1, PHYSICS_TPS * 10)
+	_check("client.order_index_syncs", order_synced >= 0, "index=%d" % _orders.current_index)
+	var board: Label3D = _kitchen.get_node("OrderBoard/TicketLabel") as Label3D
+	await get_tree().process_frame
+	_check("client.order_board_text", board.text == "1× Egg on Toast", "board=%s" % board.text)
 	var on_counter: int = await _wait_until(
 		func() -> bool: return egg.global_position.distance_to(COUNTER_EGG_POS) < 0.5, PHYSICS_TPS * 5)
 	_check("client.position_syncs", on_counter >= 0, "egg at %s" % egg.global_position)
@@ -229,12 +237,6 @@ func _run_client() -> void:
 		"mode=%d" % _net.mode)
 	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
 		"names=%s" % str(NetSession.peer_names))
-	var order_synced: int = await _wait_until(
-		func() -> bool: return _orders.current_index == 1, PHYSICS_TPS * 10)
-	_check("client.order_index_syncs", order_synced >= 0, "index=%d" % _orders.current_index)
-	var board: Label3D = _kitchen.get_node("OrderBoard/TicketLabel") as Label3D
-	await get_tree().process_frame
-	_check("client.order_board_text", board.text == "1× Egg on Toast", "board=%s" % board.text)
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
 	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)

@@ -56,11 +56,13 @@ func _on_delivered() -> void:
 	if not NetSession.is_authority() or state != State.PLAYING:
 		return
 	deliveries_made += 1
-	_orders.draw_next()
 	if not practice and deliveries_made >= delivery_goal:
 		state = State.WON
 		game_won.emit(elapsed_time, get_stars())
 		return
+	# Only while the run continues: the winning delivery leaves the board
+	# alone under the end screen.
+	_orders.draw_next()
 	_respawn_items()
 
 

@@ -12,6 +12,8 @@ var _pan: Pan
 func _ready() -> void:
 	if not pan_path.is_empty():
 		_pan = get_node_or_null(pan_path) as Pan
+	if not always_hot and _pan == null:
+		push_warning("CookSlot %s has no heat source: set pan_path or always_hot" % get_path())
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 

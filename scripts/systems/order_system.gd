@@ -61,6 +61,10 @@ func set_current(index: int) -> void:
 	current_index = clampi(index, 0, maxi(recipes.size() - 1, 0))
 
 
+## Authority only. New run: a random recipe when randomize_orders (so the
+## first ticket is not always the same one), else recipe 0.
 func reset() -> void:
-	current_index = 0
-	draw_next()
+	if randomize_orders and recipes.size() > 1:
+		current_index = _rng.randi_range(0, recipes.size() - 1)
+	else:
+		current_index = 0
