@@ -82,6 +82,10 @@ func _ready() -> void:
 	camera.current = mine
 	crosshair.visible = mine
 	skin.visible = not mine
+	# The scene ships the skin as shadows-only so your own body never blocks the
+	# camera; other players' bodies must actually render.
+	if not mine:
+		skin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	if mine:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		call_deferred("_register_debug_watches")

@@ -1105,11 +1105,14 @@ func _check_dummy() -> void:
 		_check("dummy.removes", false, "skipped")
 		return
 	var camera: Camera3D = dummy.get_node("Head/Camera3D") as Camera3D
+	var skin: MeshInstance3D = dummy.get_node("Skin") as MeshInstance3D
+	# The scene ships the skin shadows-only (for your own body); a remote copy
+	# must render, or other players are invisible.
 	_check("dummy.looks_remote",
-		not dummy.is_multiplayer_authority() and (dummy.get_node("Skin") as Node3D).visible
-		and not camera.current,
-		"authority=%s skin=%s camera=%s" % [dummy.is_multiplayer_authority(),
-			(dummy.get_node("Skin") as Node3D).visible, camera.current])
+		not dummy.is_multiplayer_authority() and skin.visible and not camera.current
+		and skin.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON,
+		"authority=%s skin=%s cast_shadow=%d camera=%s" % [dummy.is_multiplayer_authority(),
+			skin.visible, skin.cast_shadow, camera.current])
 	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
 	var off: bool = _net.toggle_dummy()
 	await _step(2)
