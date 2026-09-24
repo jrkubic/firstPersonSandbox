@@ -82,6 +82,8 @@ func spawn_player(peer_id: int) -> Player:
 	return _player_spawner.spawn([peer_id, point.global_position]) as Player
 
 
+## Players still in the kitchen; the solo dummy is never one of them (it is
+## not teleported on reset and never takes a spawn slot).
 func _live_players() -> Array[Player]:
 	var live: Array[Player] = []
 	for node in _players.get_children():
@@ -99,7 +101,15 @@ const DUMMY_PEER: int = 999
 
 
 func has_dummy() -> bool:
-	return _players.get_node_or_null(DUMMY_NAME) != null
+	return _dummy() != null
+
+
+## The live dummy node, or null (a node queued for deletion counts as gone).
+func _dummy() -> Node:
+	var node: Node = _players.get_node_or_null(DUMMY_NAME)
+	if node == null or node.is_queued_for_deletion():
+		return null
+	return node
 
 
 ## Solo aid: toggles a non-networked stand-in Player at the second spawn
@@ -108,8 +118,9 @@ func has_dummy() -> bool:
 func toggle_dummy() -> bool:
 	if NetSession.is_online():
 		return has_dummy()
-	var existing: Node = _players.get_node_or_null(DUMMY_NAME)
+	var existing: Node = _dummy()
 	if existing != null:
+		_players.remove_child(existing)  # gone this frame, so has_dummy() is honest
 		existing.queue_free()
 		return false
 	var dummy: Player = PLAYER_SCENE.instantiate() as Player

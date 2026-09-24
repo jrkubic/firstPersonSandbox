@@ -1090,9 +1090,6 @@ func _ensure_autoloads() -> void:
 		get_tree().root.add_child(node)
 
 
-## Escape menu reaches Settings and backs out one level at a time. The tree
-## is paused while the menu is open (offline), so waits use process frames.
-## Nothing here rebinds or saves, so the real settings.cfg is never written.
 ## Solo dummy: a stand-in Player that behaves like a remote peer's copy
 ## (skin on, camera off, no authority) and is never counted as a player.
 func _check_dummy() -> void:
@@ -1115,11 +1112,15 @@ func _check_dummy() -> void:
 			skin.visible, skin.cast_shadow, camera.current])
 	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
 	var off: bool = _net.toggle_dummy()
+	# Same frame: the pause menu relabels its button right after toggling.
+	var gone_now: bool = not _net.has_dummy()
 	await _step(2)
-	_check("dummy.removes", not off and _kitchen.get_node_or_null("Players/Dummy") == null,
-		"toggle=%s still_present=%s" % [off, _kitchen.get_node_or_null("Players/Dummy") != null])
+	_check("dummy.removes", not off and gone_now and _kitchen.get_node_or_null("Players/Dummy") == null,
+		"toggle=%s gone_same_frame=%s still_present=%s" % [off, gone_now, _kitchen.get_node_or_null("Players/Dummy") != null])
 
 
+## Escape menu reaches Settings and backs out one level at a time. The tree
+## is paused while the menu is open (offline), so waits use process frames.
 func _check_pause_settings() -> void:
 	var pause_menu: CanvasLayer = _kitchen.get_node("PauseMenu") as CanvasLayer
 	var buttons: Control = pause_menu.get_node("%VBoxContainer") as Control
