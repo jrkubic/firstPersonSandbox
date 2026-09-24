@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 125
+const EXPECTED_CHECKS: int = 126
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -1111,6 +1111,21 @@ func _check_dummy() -> void:
 		"authority=%s skin=%s cast_shadow=%d camera=%s" % [dummy.is_multiplayer_authority(),
 			skin.visible, skin.cast_shadow, camera.current])
 	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
+	# Solid bodies: players collide with each other (mask includes the Player
+	# layer), so walking into the dummy stops you instead of passing through.
+	var start: Vector3 = _player.global_position
+	_player.global_position = dummy.global_position + Vector3(0.0, 0.1, 1.4)
+	_player.rotation = Vector3.ZERO  # facing -z, straight at the dummy
+	_player.velocity = Vector3.ZERO
+	await _step(2)
+	_set_action("move_forward", true)
+	await _step(30)
+	_set_action("move_forward", false)
+	var gap: float = _horizontal_distance(_player, dummy)
+	_check("dummy.solid", gap > 0.7 and gap < 1.2, "gap=%.2f m after walking into it" % gap)
+	_player.global_position = start
+	_player.velocity = Vector3.ZERO
+	await _step(2)
 	var off: bool = _net.toggle_dummy()
 	# Same frame: the pause menu relabels its button right after toggling.
 	var gone_now: bool = not _net.has_dummy()
