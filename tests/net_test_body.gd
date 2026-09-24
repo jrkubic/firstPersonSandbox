@@ -14,7 +14,7 @@ extends Node
 const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
 const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 120.0
-const EXPECTED_CHECKS: Dictionary = {"host": 11, "client": 23}
+const EXPECTED_CHECKS: Dictionary = {"host": 12, "client": 25}
 
 # Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
 const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
@@ -40,6 +40,7 @@ var _finished: bool = false
 var _kitchen: Node3D
 var _net: KitchenNet
 var _loop: KitchenLoop
+var _orders: OrderSystem
 var _client_id: int = 0
 var _client_gone: bool = false
 var _connected: bool = false
@@ -80,6 +81,8 @@ func _run_host() -> void:
 	multiplayer.peer_connected.connect(func(id: int) -> void: _client_id = id)
 	multiplayer.peer_disconnected.connect(func(_id: int) -> void: _client_gone = true)
 	_load_kitchen()
+	# Deterministic ticket: the delivery below must not re-draw recipe 1.
+	_orders.randomize_orders = false
 	await _step(30)
 
 	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
@@ -101,8 +104,11 @@ func _run_host() -> void:
 	await _step(30)
 	_check("host.client_player_spawned", _net.get_player(_client_id) != null,
 		"no Players/%d on host" % _client_id)
+	# Switch the ticket after the client joined so the change replicates
+	# (on_change), not only the late-join snapshot.
+	_orders.set_current(1)
 
-	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+	var egg: FoodItem = _first_egg()
 	var pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
 	var cooked: bool = await _cook_until_cooked(egg, pan)
 	_check("host.egg_cooked", cooked, "state=%s" % egg.state_name())
@@ -119,6 +125,11 @@ func _run_host() -> void:
 	await _step(2)
 	_teleport(plate, PASS_PLATE_POS)
 	await _step(10)
+	# The ticket stayed on recipe 1 through the client's grab (the client read
+	# the board right after its release). A fried egg cannot satisfy Egg on
+	# Toast, so switch back before plating it.
+	_check("host.order_index", _orders.current_index == 1, "index=%d" % _orders.current_index)
+	_orders.set_current(0)
 	_teleport(egg, PASS_EGG_POS)
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 5)
@@ -129,9 +140,9 @@ func _run_host() -> void:
 	await _net.start_run()
 	_check("host.run_started",
 		_net.mode == KitchenNet.Mode.RUN and _loop.deliveries_made == 0
-		and get_tree().get_nodes_in_group("food").size() == 2 and get_tree().get_nodes_in_group("plate").size() == 2,
+		and _foods_tagged("egg").size() == 2 and get_tree().get_nodes_in_group("plate").size() == 2,
 		"mode=%d deliveries=%d eggs=%d plates=%d" % [_net.mode, _loop.deliveries_made,
-			get_tree().get_nodes_in_group("food").size(), get_tree().get_nodes_in_group("plate").size()])
+			_foods_tagged("egg").size(), get_tree().get_nodes_in_group("plate").size()])
 
 	var gone: int = await _wait_until(func() -> bool: return _client_gone, PHYSICS_TPS * 60)
 	_check("host.client_left", gone >= 0, "client never disconnected")
@@ -166,11 +177,11 @@ func _run_client() -> void:
 		"host player missing or wrongly owned")
 
 	var egg_seen: int = await _wait_until(
-		func() -> bool: return get_tree().get_first_node_in_group("food") != null, PHYSICS_TPS * 5)
-	if not _check("client.sees_egg", egg_seen >= 0, "no food node replicated in 5 s"):
+		func() -> bool: return _first_egg() != null, PHYSICS_TPS * 5)
+	if not _check("client.sees_egg", egg_seen >= 0, "no egg node replicated in 5 s"):
 		_finish_client()
 		return
-	var egg: FoodItem = get_tree().get_first_node_in_group("food") as FoodItem
+	var egg: FoodItem = _first_egg()
 	_check("client.egg_frozen", egg.freeze, "client egg is simulating physics")
 	_check("client.egg_parent", egg.get_parent() == _kitchen.get_node("Items"),
 		"parent=%s" % egg.get_parent().name)
@@ -218,6 +229,12 @@ func _run_client() -> void:
 		"mode=%d" % _net.mode)
 	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
 		"names=%s" % str(NetSession.peer_names))
+	var order_synced: int = await _wait_until(
+		func() -> bool: return _orders.current_index == 1, PHYSICS_TPS * 10)
+	_check("client.order_index_syncs", order_synced >= 0, "index=%d" % _orders.current_index)
+	var board: Label3D = _kitchen.get_node("OrderBoard/TicketLabel") as Label3D
+	await get_tree().process_frame
+	_check("client.order_board_text", board.text == "1× Egg on Toast", "board=%s" % board.text)
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
 	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
@@ -253,6 +270,7 @@ func _load_kitchen() -> void:
 	get_tree().current_scene = _kitchen
 	_net = _kitchen.get_node("Net") as KitchenNet
 	_loop = _kitchen.get_node("KitchenLoop") as KitchenLoop
+	_orders = _kitchen.get_node("OrderSystem") as OrderSystem
 
 
 func _parse_args() -> void:
@@ -326,6 +344,21 @@ func _teleport(body: RigidBody3D, pos: Vector3) -> void:
 func _horizontal_distance(a: Node3D, b: Node3D) -> float:
 	var d: Vector3 = a.global_position - b.global_position
 	return Vector2(d.x, d.z).length()
+
+
+## Every FoodItem with the given recipe tag (bread shares the "food" group).
+func _foods_tagged(tag: String) -> Array[FoodItem]:
+	var out: Array[FoodItem] = []
+	for node in get_tree().get_nodes_in_group("food"):
+		var food: FoodItem = node as FoodItem
+		if food != null and food.recipe_tag == tag:
+			out.append(food)
+	return out
+
+
+func _first_egg() -> FoodItem:
+	var eggs: Array[FoodItem] = _foods_tagged("egg")
+	return eggs[0] if not eggs.is_empty() else null
 
 
 ## Drops the egg into the pan (assumed on the stove) and stirs until COOKED.

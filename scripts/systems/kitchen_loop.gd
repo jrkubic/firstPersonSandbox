@@ -6,6 +6,7 @@ extends Node
 enum State { PLAYING, WON }
 
 @export_node_path("DeliveryZone") var delivery_zone_path: NodePath
+@export_node_path("OrderSystem") var order_system_path: NodePath = NodePath("../OrderSystem")
 
 @export var delivery_goal: int = 3
 @export var star_3_threshold: float = 45.0
@@ -19,6 +20,8 @@ signal game_won(elapsed_time: float, stars: int)
 var state: State = State.PLAYING
 var elapsed_time: float = 0.0
 var deliveries_made: int = 0
+
+@onready var _orders: OrderSystem = get_node(order_system_path)
 
 
 func _ready() -> void:
@@ -46,12 +49,14 @@ func reset() -> void:
 	state = State.PLAYING
 	elapsed_time = 0.0
 	deliveries_made = 0
+	_orders.reset()
 
 
 func _on_delivered() -> void:
 	if not NetSession.is_authority() or state != State.PLAYING:
 		return
 	deliveries_made += 1
+	_orders.draw_next()
 	if not practice and deliveries_made >= delivery_goal:
 		state = State.WON
 		game_won.emit(elapsed_time, get_stars())

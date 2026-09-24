@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 107
+const EXPECTED_CHECKS: int = 112
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -112,6 +112,7 @@ func _run() -> void:
 	await _check_crouch_blocked()
 	await _check_held_egg(pan)
 	await _check_occupied_slot(pan)
+	await _check_orders()
 	await _check_walk()
 	await _check_trash()
 	await _check_pause_settings()
@@ -162,6 +163,11 @@ func _check_boot() -> bool:
 	if not _check("boot.wiring", wiring_ok, "missing node(s) under Kitchen"):
 		return false
 	_zone.delivered.connect(func() -> void: _delivered_count += 1)
+	# The smoke run delivers more than the default goal of 3; never reach WON
+	# (which pauses the tree).
+	_loop.delivery_goal = 99
+	# Keep the ticket on recipe 0 (fried egg) unless a check sets it explicitly.
+	_order_system.randomize_orders = false
 
 	# Keep the debug overlay visible so its watch Callables run every frame
 	# (including the "no egg / no plate" branches during respawn).
@@ -172,7 +178,7 @@ func _check_boot() -> bool:
 	# Spawns are call_deferred; then let everything drop onto its surface.
 	await _step(30)
 
-	var eggs: int = get_tree().get_nodes_in_group("food").size()
+	var eggs: int = _foods_tagged("egg").size()
 	var plates: int = get_tree().get_nodes_in_group("plate").size()
 	var pans: int = get_tree().get_nodes_in_group("pan").size()
 	var stoves: int = get_tree().get_nodes_in_group("stove").size()
@@ -189,6 +195,9 @@ func _check_boot() -> bool:
 		"state=%s progress=%.2f" % [egg.state_name(), egg.cook_progress])
 	_check("boot.pan_on_stove", pan.is_on_stove(), "pan.is_on_stove() == false")
 	_check("boot.not_holding", not _grab.is_holding(), "held=%s" % _grab.held_body_name())
+	_check("boot.order_fried_egg",
+		_order_system.current_index == 0 and _order_system.current_order_text() == "1× Fried Egg",
+		"index=%d text=%s" % [_order_system.current_index, _order_system.current_order_text()])
 	return true
 
 
@@ -293,8 +302,8 @@ func _check_deliver(burned_egg: FoodItem, pan: Pan, plate: Plate) -> void:
 	await _step(2)
 	var egg: FoodItem = _egg_spawner.spawn() as FoodItem
 	var spawned_ok: bool = _check("deliver.fresh_egg",
-		egg != null and get_tree().get_nodes_in_group("food").size() == 1,
-		"food count=%d" % get_tree().get_nodes_in_group("food").size())
+		egg != null and _foods_tagged("egg").size() == 1,
+		"egg count=%d" % _foods_tagged("egg").size())
 	if not spawned_ok:
 		return
 	await _step(2)
@@ -318,9 +327,9 @@ func _check_deliver(burned_egg: FoodItem, pan: Pan, plate: Plate) -> void:
 	_check("deliver.respawn",
 		new_plate != null and new_egg != null
 		and get_tree().get_nodes_in_group("plate").size() == 1
-		and get_tree().get_nodes_in_group("food").size() == 1
+		and _foods_tagged("egg").size() == 1
 		and new_egg.state == FoodItem.State.RAW,
-		"plates=%d eggs=%d" % [get_tree().get_nodes_in_group("plate").size(), get_tree().get_nodes_in_group("food").size()])
+		"plates=%d eggs=%d" % [get_tree().get_nodes_in_group("plate").size(), _foods_tagged("egg").size()])
 	_check("deliver.count", _loop.deliveries_made == 1,
 		"deliveries_made=%d" % _loop.deliveries_made)
 	# Spawned items live under Kitchen/Items, not under the StaticBody3D
@@ -798,11 +807,36 @@ func _check_occupied_slot(pan: Pan) -> void:
 	var fired: int = await _wait_until(func() -> bool: return _delivered_count > before, 60)
 	_check("occupied.delivered", fired >= 0, "extra egg on the plate was not delivered")
 	await _step(10)
-	_check("occupied.no_extra_egg", get_tree().get_nodes_in_group("food").size() == 1 and is_instance_valid(slot_egg),
-		"%d eggs in the world (slot egg valid=%s)" % [get_tree().get_nodes_in_group("food").size(), is_instance_valid(slot_egg)])
+	_check("occupied.no_extra_egg", _foods_tagged("egg").size() == 1 and is_instance_valid(slot_egg),
+		"%d eggs in the world (slot egg valid=%s)" % [_foods_tagged("egg").size(), is_instance_valid(slot_egg)])
 	_check("occupied.slot_still_full", not _egg_spawner.is_slot_free(), "egg slot reported free")
 	_check("occupied.plate_respawned", get_tree().get_nodes_in_group("plate").size() == 1 and _plate_spawner.is_slot_free() == false,
 		"%d plates, plate slot free=%s" % [get_tree().get_nodes_in_group("plate").size(), _plate_spawner.is_slot_free()])
+
+
+## Recipe data: set_current swaps the ticket, check_delivery matches the
+## plate's tags exactly and only when everything is COOKED.
+func _check_orders() -> void:
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	var egg: FoodItem = _first_food()
+	if not _check("orders.setup", plate != null and egg != null, "no plate or egg"):
+		return
+	_order_system.set_current(1)
+	_check("orders.ticket_switches", _order_system.current_order_text() == "1× Egg on Toast",
+		"text=%s" % _order_system.current_order_text())
+	var cooked: bool = await _cook_until_cooked(egg, get_tree().get_first_node_in_group("pan") as Pan)
+	_teleport(plate, PASS_PLATE_POS)
+	await _step(10)
+	_teleport(egg, PASS_EGG_POS)
+	await _step(10)
+	_check("orders.egg_only_rejected_for_toast", cooked and not _order_system.check_delivery(plate),
+		"cooked=%s accepted=%s" % [cooked, _order_system.check_delivery(plate)])
+	_order_system.set_current(0)
+	_check("orders.egg_only_accepted_for_fried_egg", _order_system.check_delivery(plate),
+		"fried egg plate rejected: %s" % plate.container.contents_text())
+	# Leave the plate and egg where they are: DeliveryZone will deliver them
+	# now that the ticket matches, which the next frames absorb.
+	await _step(30)
 
 
 ## Hold "walk" and "move_right": the player settles at half speed; release
@@ -851,9 +885,9 @@ func _check_trash() -> void:
 	await _step(5)
 	var new_egg: FoodItem = _first_food()
 	_check("trash.egg_replaced",
-		new_egg != null and get_tree().get_nodes_in_group("food").size() == 1
+		new_egg != null and _foods_tagged("egg").size() == 1
 		and not _egg_spawner.is_slot_free(),
-		"eggs=%d slot_free=%s" % [get_tree().get_nodes_in_group("food").size(), _egg_spawner.is_slot_free()])
+		"eggs=%d slot_free=%s" % [_foods_tagged("egg").size(), _egg_spawner.is_slot_free()])
 
 	# Pan: binned and replaced on the stove even though pans never refill on delivery.
 	_teleport(pan, TRASH_ZONE_POS)
@@ -958,8 +992,19 @@ func _horizontal_distance(a: Node3D, b: Node3D) -> float:
 	return Vector2(d.x, d.z).length()
 
 
+## Every FoodItem with the given recipe tag (bread shares the "food" group).
+func _foods_tagged(tag: String) -> Array[FoodItem]:
+	var out: Array[FoodItem] = []
+	for node in get_tree().get_nodes_in_group("food"):
+		var food: FoodItem = node as FoodItem
+		if food != null and food.recipe_tag == tag:
+			out.append(food)
+	return out
+
+
 func _first_food() -> FoodItem:
-	return get_tree().get_first_node_in_group("food") as FoodItem
+	var eggs: Array[FoodItem] = _foods_tagged("egg")
+	return eggs[0] if not eggs.is_empty() else null
 
 
 ## Adds the autoloads by name if they are not on root (they always are in a

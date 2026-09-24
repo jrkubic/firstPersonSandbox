@@ -10,6 +10,6 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	# recipe_tag / required_count replicate to clients after _ready.
+	# current_index replicates to clients after _ready.
 	if _system:
 		text = _system.current_order_text()

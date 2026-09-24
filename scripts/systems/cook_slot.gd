@@ -2,12 +2,16 @@ class_name CookSlot
 extends Area3D
 
 @export_node_path("Pan") var pan_path: NodePath
+## Stations with their own heat (the toaster) tick whenever food is in the slot.
+@export var always_hot: bool = false
 
 var _foods: Array[FoodItem] = []
-@onready var _pan: Pan = get_node(pan_path)
+var _pan: Pan
 
 
 func _ready() -> void:
+	if not pan_path.is_empty():
+		_pan = get_node_or_null(pan_path) as Pan
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 
@@ -17,7 +21,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if _foods.is_empty():
 		return
-	if not _pan.is_on_stove():
+	if not _is_heating():
 		return
 	for food in _foods:
 		if not is_instance_valid(food):
@@ -34,6 +38,10 @@ func _physics_process(delta: float) -> void:
 ## True while the food overlaps this slot's volume (ticked or not).
 func has_food(food: FoodItem) -> bool:
 	return _foods.has(food)
+
+
+func _is_heating() -> bool:
+	return always_hot or (_pan != null and _pan.is_on_stove())
 
 
 func _on_body_entered(body: Node) -> void:

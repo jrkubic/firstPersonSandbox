@@ -119,7 +119,7 @@ func _spawn_point_for(index: int) -> Node3D:
 func _on_peer_connected(peer_id: int) -> void:
 	spawn_player(peer_id)
 	_apply_full_state.rpc_id(peer_id, mode, _loop.state, _loop.deliveries_made,
-		_loop.elapsed_time, _orders.recipe_tag, _orders.required_count)
+		_loop.elapsed_time, _orders.current_index)
 	# Bring up stations gated by min_players (e.g. 2) that have never spawned.
 	# Stations that already produced something are left alone, or a joiner
 	# would get a second pan and extra eggs/plates mid-practice.
@@ -200,12 +200,11 @@ func _apply_mode(changed: bool) -> void:
 
 @rpc("authority", "reliable")
 func _apply_full_state(new_mode: int, loop_state: int, deliveries: int, elapsed: float,
-		recipe: String, count: int) -> void:
+		order_index: int) -> void:
 	_loop.state = loop_state as KitchenLoop.State
 	_loop.deliveries_made = deliveries
 	_loop.elapsed_time = elapsed
-	_orders.recipe_tag = recipe
-	_orders.required_count = count
+	_orders.set_current(order_index)
 	mode = new_mode as Mode
 
 

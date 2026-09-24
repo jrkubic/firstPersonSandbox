@@ -213,13 +213,13 @@ func _register_debug_watches() -> void:
 	overlay.watch("crouched", func() -> String: return str(crouched))
 	overlay.watch("walking", func() -> String: return str(is_walking()))
 	overlay.watch("egg.state", func() -> String:
-		var f: FoodItem = get_tree().get_first_node_in_group(Groups.FOOD) as FoodItem
+		var f: FoodItem = _first_egg()
 		return f.state_name() if f else "-")
 	overlay.watch("egg.seconds", func() -> String:
-		var f: FoodItem = get_tree().get_first_node_in_group(Groups.FOOD) as FoodItem
+		var f: FoodItem = _first_egg()
 		return "%.1fs" % f.cook_elapsed_seconds() if f else "-")
 	overlay.watch("egg.progress", func() -> String:
-		var f: FoodItem = get_tree().get_first_node_in_group(Groups.FOOD) as FoodItem
+		var f: FoodItem = _first_egg()
 		return "%.2f" % f.cook_progress if f else "-")
 	overlay.watch("pan.on_stove", func() -> String:
 		var p: Pan = get_tree().get_first_node_in_group(Groups.PAN) as Pan
@@ -230,3 +230,12 @@ func _register_debug_watches() -> void:
 	var orders: OrderSystem = get_node_or_null("/root/Kitchen/OrderSystem") as OrderSystem
 	if orders:
 		overlay.watch("order", Callable(orders, "current_order_text"))
+
+
+## The first egg in the world (the "food" group also holds bread).
+func _first_egg() -> FoodItem:
+	for node in get_tree().get_nodes_in_group(Groups.FOOD):
+		var food: FoodItem = node as FoodItem
+		if food != null and food.recipe_tag == "egg":
+			return food
+	return null
