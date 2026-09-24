@@ -66,6 +66,15 @@ Solo play and the automated tests need none of this. For Steam sessions:
 6. A fresh plate and egg respawn automatically. Repeat; after the third
    delivery the end screen shows your time and star rating.
 
+**Egg on Toast.** The ticket on the wall picks a recipe at random after each
+delivery: `1× Fried Egg` or `1× Egg on Toast`. For toast, take a slice of
+bread from the crate on the north counter (behind the stove) and drop it into
+either slot of the toaster next to it. The toaster is always hot: the slice
+starts toasting the moment it lands, is done in ~3 s and burns if left
+another ~3 s, so lift it out. Plate the toast together with a cooked egg and
+deliver as usual; a plate with only one of the two is refused, as is a
+fried-egg plate while the ticket asks for toast.
+
 Drop anything into the green bin by the plate rack to trash it; a fresh one
 appears at its station.
 
@@ -161,10 +170,11 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 107 checks are:
+watchdog trips. The 121 checks are:
 
-- `boot.*` (5) — kitchen loads and is wired; exactly one egg, plate, pan and
-  stove; egg `RAW`; pan on the stove; nothing held
+- `boot.*` (6) — kitchen loads and is wired; exactly one egg, bread, plate,
+  pan and stove; egg `RAW`; pan on the stove; nothing held; the ticket is
+  recipe 0, `1× Fried Egg`
 - `cook.*` (5) — `RAW` to `COOKING` to `COOKED` at one 1/60 s tick per physics
   frame; a loose egg stays inside the rimmed pan
 - `pause.*` (4) — progress freezes while the pan is off the stove and resumes
@@ -199,6 +209,13 @@ watchdog trips. The 107 checks are:
   until released
 - `occupied.*` (6) — a delivery while a fresh egg still sits in its slot does
   not spawn a second one
+- `orders.*` (4) — `set_current(1)` switches the ticket to `1× Egg on Toast`;
+  a cooked-egg-only plate is rejected against it and accepted once the ticket
+  is back on the fried egg
+- `toast.*` (9) — bread dropped in a toaster slot toasts with no pan or stove
+  and reaches `COOKED` in ~3 s; a toast-only plate is rejected; toast plus a
+  cooked egg delivers `1× Egg on Toast` and the bread respawns; a slice left
+  in the slot burns; binned bread is replaced; the ticket switches back
 - `walk.*` (2) — holding `walk` settles the player at
   `move_speed * walk_speed_multiplier`; releasing it restores full speed
 - `trash.*` (7) — a held egg in the bin survives; once released it is freed
@@ -225,17 +242,18 @@ powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1
 The script prints the merged `PASS` / `FAIL` / `SUMMARY` lines of both halves
 (stdout goes to `%TEMP%\net_test_host.log` and `net_test_client.log`, Godot's
 stderr to the matching `.err.log` files) and ends with `NET TEST PASSED` or
-`NET TEST FAILED`. The 34 checks split into 11 `host.*` and 23 `client.*`:
+`NET TEST FAILED`. The 37 checks split into 12 `host.*` and 25 `client.*`:
 the host follows a scripted timeline (listen, hold the plate before the client
-joins, cook the egg, park it on the counter, wait for the client's grab and
-release, deliver, start the run, wait for the client to leave) while the
-client asserts what it sees replicated — its own player spawned with
+joins, switch the ticket to Egg on Toast once the client is in, cook the egg,
+park it on the counter, wait for the client's grab and release, switch the
+ticket back and deliver, start the run, wait for the client to leave) while
+the client asserts what it sees replicated — its own player spawned with
 authority and the host's without, the egg frozen and parented under `Items`,
 `cook_progress`, state and position arriving, the plate reported `held_by`
 the host on late join, a grab on that plate rejected as `TAKEN`, its own grab
 and release round-tripping through the RPCs, names and practice mode on
-join, the delivery count, the mode switch, the teleport on run start and the
-timer ticking. Per-check table: `tests/README.md`.
+join, the ticket index and the order board text, the delivery count, the
+mode switch, the teleport on run start and the timer ticking. Per-check table: `tests/README.md`.
 
 ### Menu test
 
@@ -278,7 +296,7 @@ end), never the real `settings.cfg`.
 Run this after any meaningful change to verify the slice end-to-end.
 
 1. Load the kitchen scene. Confirm: egg on the counter, plate on the plate
-   rack, pan on the stove, order board reads `1x egg(COOKED)`, F3 toggles the
+   rack, pan on the stove, order board reads `1× Fried Egg` or `1× Egg on Toast`, F3 toggles the
    debug overlay, crosshair is visible.
 2. Grab the egg, drop it in the pan. Watch `egg.state` progress from `RAW` to
    `COOKING` to `COOKED` over ~4 seconds.
@@ -367,17 +385,23 @@ number decides whether holder-owned physics is worth building.
 
 - `scenes/` — `menu.tscn`, `kitchen.tscn`, `player.tscn`, `trash_can.tscn`
   (the bin instanced in the kitchen; its `TrashZone` bins unheld items),
+  `toaster.tscn` (static body with a rim and two always-hot `CookSlot`s,
+  instanced on the kitchen's `ToasterCounter`),
   `ui/{debug_overlay,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.tscn`
   (`menu_diorama.tscn` is the animated primitive kitchen behind the title
   menu),
-  `items/{egg,pan,plate}.tscn`,
+  `items/{egg,bread,pan,plate}.tscn`,
   `sync/{player,egg,container,loop,orders,net}_sync.tres`
-  (`MultiplayerSynchronizer` replication configs)
+  (`MultiplayerSynchronizer` replication configs; bread reuses `egg_sync`)
+- `resources/recipes/{fried_egg,egg_on_toast}.tres` — `Recipe` resources
+  (`id`, `ticket` text, `ingredients` tags) the `OrderSystem` draws from
 - `scripts/` — `player.gd`, `menu.gd`, `settings.gd` (the `Settings`
   autoload: one rebindable key per action and the look sensitivity
   (`mouse_sensitivity`), applied
   to the `InputMap` and persisted to `user://settings.cfg`), `groups.gd`
   (node-group name constants), `items/{food_item,pan,plate}.gd`,
+  `recipes/recipe.gd` (the `Recipe` resource: exact ingredient-tag match,
+  all `COOKED`),
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
   Steam autoload, per-item replication and smoothing),
   `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,trash_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
@@ -409,7 +433,8 @@ number decides whether holder-owned physics is worth building.
 - Run state is minimal: a count-up timer, a fixed three-delivery goal and a
   star rating on the end screen; no fail state and no persistent score
 - No customer NPCs or dining area
-- Only one recipe (fried egg)
+- Two recipes (fried egg, egg on toast), one ticket at a time drawn at
+  random after each delivery; no ticket queue or expiry yet
 - Art is grey-box primitives only
 - The automated smoke test is headless physics only — no rendering or visual
   regression coverage, so the manual smoke test above is still the net for

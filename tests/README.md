@@ -36,7 +36,7 @@ headless physics still advances in real time.
 
 | Check group | What it asserts |
 |-------------|-----------------|
-| `boot.*` | Kitchen loads; `Pass/DeliveryZone`, `KitchenLoop`, `OrderSystem`, both `ItemSpawner`s, the camera and `GrabController` are wired; after the deferred spawns settle there is exactly one egg (`food`), one plate, one pan and one stove; the egg is `RAW` at progress 0; the pan reports `is_on_stove()`; nothing is held. The debug overlay is switched on for the whole run so its watch Callables execute headless (including the "no egg / no plate" branches during respawn). |
+| `boot.*` | Kitchen loads; `Pass/DeliveryZone`, `KitchenLoop`, `OrderSystem`, both `ItemSpawner`s, the camera and `GrabController` are wired; after the deferred spawns settle there is exactly one egg and one bread (both in `food`, told apart by `recipe_tag` via `_foods_tagged()`), one plate, one pan and one stove; the egg is `RAW` at progress 0; the pan reports `is_on_stove()`; nothing is held; the ticket is `current_index == 0`, `1× Fried Egg`. Right after wiring the body sets `KitchenLoop.delivery_goal = 99` (the run makes five deliveries and must never reach WON, which pauses the tree) and `OrderSystem.randomize_orders = false` (the ticket only moves when a check calls `set_current()`). The debug overlay is switched on for the whole run so its watch Callables execute headless (including the "no egg / no plate" branches during respawn). |
 | `cook.*` | Egg dropped into the pan on the stove goes `RAW -> COOKING` within 10 frames. `cook.egg_stays_in_pan` watches the egg unassisted for 90 frames: it must still be inside the pan's rim (under 0.2 m off-axis) and must have gained the full 90 ticks of `cook_progress` (see below). Then, while "stirring" (re-centring the egg in the pan every 20 frames if it drifted), the egg reaches `COOKED` and the number of physics frames matches the remaining `cook_duration` exactly (one 1/60 s tick per physics frame, +10/-2 frames tolerance). |
 | `pause.*` | Pan (with the egg) teleported onto the counter: `is_on_stove()` becomes false and `cook_progress` does not move for 60 frames. Pan returned to the stove: `is_on_stove()` true again and progress advances. |
 | `burn.*` | Cooking continues past `cook_duration + burn_duration`: state becomes `BURNED`, `cook_progress` clamps at exactly 2.0 and stays there. |
@@ -51,6 +51,8 @@ headless physics still advances in real time.
 | `crouch.blocked_*` | Standing up is refused under a temporary 1.5-1.7 m ceiling slab, allowed once it is freed, and never blocked by a body in the `held` group. |
 | `held_egg.*` | A cooked egg in the `held` group on a plate in the zone is not delivered; releasing it delivers (`delivery_goal` is raised to 10 first so the run never reaches WON). |
 | `occupied.*` | A separately instantiated egg is cooked and delivered while the respawned egg still sits in the spawner slot: no second egg is spawned, the slot stays occupied, the plate respawns. |
+| `orders.*` | Recipe data. `set_current(1)` switches `current_order_text()` to `1× Egg on Toast`; a plate holding only a cooked egg is rejected by `check_delivery()` against that ticket and accepted once `set_current(0)` puts the fried egg back. The plate is left in the zone, so `DeliveryZone` delivers it over the next 30 frames (`_check_walk` / `_check_trash` re-fetch their items afterwards). |
+| `toast.*` | Bread and the toaster. The raw slice is teleported just above `SlotA` of the toaster on the `ToasterCounter` (`TOASTER_SLOT_A`); it reaches `COOKING` within 20 frames with no pan or stove involved (`CookSlot.always_hot`) and `COOKED` within 1.5× `cook_duration`. It is then parked off-heat on the counter (`TOASTER_COUNTER_PARK_POS`, clear of the toaster and the bread spawner's slot radius) — the slots are always hot, so leaving it in place during the egg's 4 s cook would burn it (bread burns 3 s after toasting). With the ticket on recipe 1, a plate with only the toast is rejected; adding the cooked egg delivers within 60 frames (the detail string guards `plate`, which the delivery frees) and one raw bread respawns. A fresh slice left in `SlotB` reaches `BURNED` within 1.5× (`cook_duration + burn_duration`); binned, it is freed and replaced. Finally `set_current(0)` restores `1× Fried Egg`. |
 | `crouch.*` | Holding `crouch`: `is_crouched()`, the Head drops toward `crouch_height_offset`, the capsule shrinks to `crouch_capsule_height` with its bottom staying on the floor. Releasing: stands up, Head and capsule restored. |
 | `plate_on_pan.*` | A freshly cooked egg is plated and the plate is set down on the pan while the pan is on the stove. The plate's `FoodContainer` reports the egg (`is_contained()`), the pan's `CookSlot` still overlaps it (`has_food()`), yet `cook_progress` does not move for 120 frames and the state stays `COOKED`; the egg is still in both volumes afterwards, so the freeze is due to containment rather than the egg escaping. Moving the plate away and dropping the egg back in the pan clears containment and progress resumes. |
 | `pause_settings.*` | Runs last. A `pause` action press through `Input.parse_input_event` opens `PauseMenu` on its buttons (`%VBoxContainer` visible, `%SettingsPage` hidden); emitting `%SettingsButton.pressed` swaps the controls page in; a second `pause` press backs out to the buttons rather than resuming; a third resumes. The tree is paused meanwhile (offline), so the waits count process frames. Nothing is rebound or saved, so the real `settings.cfg` is never written. |
@@ -127,7 +129,9 @@ Each half prints its own `SUMMARY <role>: N passed, N failed` line and
 exits `1` if any check failed, if the number of checks run differs from
 `EXPECTED_CHECKS[role]` (`FAIL <role>.summary.count`), or if its 120 s
 watchdog trips. Adding a check means bumping `EXPECTED_CHECKS` for that
-role only (`{"host": 11, "client": 23}` today). Waits are counted in physics
+role only (`{"host": 12, "client": 25}` today). The host sets
+`OrderSystem.randomize_orders = false` right after loading the kitchen so the
+ticket only moves on its own `set_current()` calls. Waits are counted in physics
 frames at 60 ticks/s as in the smoke test; the whole run takes about 15 s
 including the runner's 4 s head start.
 
@@ -152,7 +156,8 @@ waits for the client to disconnect before leaving.
 | `host.egg_cooked` | The egg reaches `COOKED` in the pan within 1.5× `cook_duration`. |
 | `host.client_grabbed_egg` | Within 20 s the parked egg's `held_by` becomes the client's peer id — the grab RPC arrived and passed re-validation. |
 | `host.client_released_egg` | Within 20 s `held_by` returns to `NetBody.NOBODY`. |
-| `host.delivered` | Plate then egg teleported to the Pass: `deliveries_made == 1` within 5 s. |
+| `host.order_index` | `OrderSystem.current_index` is still 1: the host called `set_current(1)` right after `host.client_player_spawned` (so the change replicates on_change, not only via the join snapshot) and nothing re-drew it through the client's grab. Checked just before the ticket is switched back to 0, because a fried-egg plate cannot satisfy Egg on Toast. |
+| `host.delivered` | Ticket back on recipe 0, plate then egg teleported to the Pass: `deliveries_made == 1` within 5 s. |
 | `host.practice_no_win` | `KitchenLoop.state` is still `PLAYING` and `KitchenNet.mode` is `PRACTICE`: a practice delivery never ends the run. |
 | `host.run_started` | After `start_run()`: mode `RUN`, `deliveries_made == 0`, exactly two eggs and two plates (one per spawner) after the in-place reset. |
 | `host.client_left` | `peer_disconnected` fires within 60 s. |
@@ -180,6 +185,8 @@ The client, in order:
 | `client.release_rpc` | `request_release` clears `is_holding()` and `held_by` goes back to `NOBODY` within 5 s. |
 | `client.practice_mode_on_join` | `KitchenNet.mode` is `PRACTICE` (came through the full-state RPC on join). |
 | `client.names_synced` | `NetSession.peer_names` has entries for peer 1 and for us. |
+| `client.order_index_syncs` | `OrderSystem.current_index` becomes 1 within 10 s (`orders_sync.tres` replicates it on change). |
+| `client.order_board_text` | One process frame later `OrderBoard/TicketLabel.text` reads `1× Egg on Toast`. Read right after our release: the host keeps the ticket on recipe 1 for 12+ frames after seeing that release before switching back to deliver. |
 | `client.delivery_syncs` | `deliveries_made == 1` after the host's delivery. |
 | `client.mode_syncs` | Mode flips to `RUN` after the host's `start_run()`. |
 | `client.teleport_rpc` | Our player is within 0.5 m of `SpawnPoint1` — the owning-peer teleport RPC moved a body we have authority over. |

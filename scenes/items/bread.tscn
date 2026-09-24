@@ -1,0 +1,38 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/items/food_item.gd" id="1_food"]
+[ext_resource type="Script" path="res://scripts/net/net_body.gd" id="2_net_body"]
+[ext_resource type="SceneReplicationConfig" path="res://scenes/sync/egg_sync.tres" id="3_sync"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_bread"]
+size = Vector3(0.14, 0.035, 0.14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_bread"]
+size = Vector3(0.14, 0.035, 0.14)
+
+[node name="Bread" type="RigidBody3D"]
+collision_layer = 4
+collision_mask = 7
+mass = 0.08
+continuous_cd = true
+script = ExtResource("1_food")
+recipe_tag = "bread"
+cook_duration = 3.0
+burn_duration = 3.0
+raw_color = Color(0.93, 0.85, 0.68, 1)
+cooked_color = Color(0.72, 0.45, 0.2, 1)
+burned_color = Color(0.12, 0.09, 0.07, 1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_bread")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_bread")
+
+[node name="NetBody" type="Node" parent="."]
+script = ExtResource("2_net_body")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = ExtResource("3_sync")

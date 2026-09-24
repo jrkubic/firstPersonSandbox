@@ -1,0 +1,95 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/cook_slot.gd" id="1_cook_slot"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.3, 0.3, 0.33, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_body"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.56, 0.25, 0.32)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.56, 0.25, 0.32)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rim_x"]
+size = Vector3(0.56, 0.06, 0.02)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rim_x"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.56, 0.06, 0.02)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_rim_z"]
+size = Vector3(0.02, 0.06, 0.32)
+
+[sub_resource type="BoxMesh" id="BoxMesh_rim_z"]
+material = SubResource("StandardMaterial3D_body")
+size = Vector3(0.02, 0.06, 0.32)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_slot"]
+size = Vector3(0.24, 0.14, 0.28)
+
+[node name="Toaster" type="StaticBody3D"]
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.125, 0)
+mesh = SubResource("BoxMesh_body")
+
+[node name="BodyCollision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.125, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="RimN" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, -0.15)
+shape = SubResource("BoxShape3D_rim_x")
+
+[node name="RimNMesh" type="MeshInstance3D" parent="RimN"]
+mesh = SubResource("BoxMesh_rim_x")
+
+[node name="RimS" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0.15)
+shape = SubResource("BoxShape3D_rim_x")
+
+[node name="RimSMesh" type="MeshInstance3D" parent="RimS"]
+mesh = SubResource("BoxMesh_rim_x")
+
+[node name="RimE" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.27, 0.28, 0)
+shape = SubResource("BoxShape3D_rim_z")
+
+[node name="RimEMesh" type="MeshInstance3D" parent="RimE"]
+mesh = SubResource("BoxMesh_rim_z")
+
+[node name="RimW" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.27, 0.28, 0)
+shape = SubResource("BoxShape3D_rim_z")
+
+[node name="RimWMesh" type="MeshInstance3D" parent="RimW"]
+mesh = SubResource("BoxMesh_rim_z")
+
+[node name="Divider" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.28, 0)
+shape = SubResource("BoxShape3D_rim_z")
+
+[node name="DividerMesh" type="MeshInstance3D" parent="Divider"]
+mesh = SubResource("BoxMesh_rim_z")
+
+[node name="SlotA" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.135, 0.32, 0)
+collision_layer = 0
+collision_mask = 4
+script = ExtResource("1_cook_slot")
+always_hot = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SlotA"]
+shape = SubResource("BoxShape3D_slot")
+
+[node name="SlotB" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.135, 0.32, 0)
+collision_layer = 0
+collision_mask = 4
+script = ExtResource("1_cook_slot")
+always_hot = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SlotB"]
+shape = SubResource("BoxShape3D_slot")

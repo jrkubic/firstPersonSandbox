@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 112
+const EXPECTED_CHECKS: int = 121
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -43,6 +43,14 @@ const STIR_DRIFT: float = 0.05
 # pan" (the disc radius is 0.25 and the CookSlot box half-extent is 0.2).
 const PAN_RIM_DRIFT: float = 0.2
 const TRASH_ZONE_POS: Vector3 = Vector3(4.0, 0.5, 1.5)  # inside the bin, see scenes/trash_can.tscn
+# Toaster on the ToasterCounter (0, 0, -2): slot centres sit at x = 0.11 +- 0.135,
+# body top y = 1.25; a slice dropped here lands inside the rim of each slot.
+const TOASTER_SLOT_A: Vector3 = Vector3(0.24, 1.36, -2.0)   # see scenes/toaster.tscn placement
+const TOASTER_SLOT_B: Vector3 = Vector3(-0.02, 1.36, -2.0)
+const PASS_BREAD_POS: Vector3 = Vector3(0.15, 1.12, 3.0)
+# Off-heat spot on the toaster counter: clear of the toaster body (x up to
+# 0.39, z +-0.16) and outside the bread spawner's slot radius at (-0.5, -2).
+const TOASTER_COUNTER_PARK_POS: Vector3 = Vector3(0.5, 1.1, -2.5)
 
 var _passed: int = 0
 var _failed: int = 0
@@ -113,6 +121,7 @@ func _run() -> void:
 	await _check_held_egg(pan)
 	await _check_occupied_slot(pan)
 	await _check_orders()
+	await _check_toast()
 	await _check_walk()
 	await _check_trash()
 	await _check_pause_settings()
@@ -179,13 +188,14 @@ func _check_boot() -> bool:
 	await _step(30)
 
 	var eggs: int = _foods_tagged("egg").size()
+	var breads: int = _foods_tagged("bread").size()
 	var plates: int = get_tree().get_nodes_in_group("plate").size()
 	var pans: int = get_tree().get_nodes_in_group("pan").size()
 	var stoves: int = get_tree().get_nodes_in_group("stove").size()
 	var counts_ok: bool = _check(
 		"boot.items",
-		eggs == 1 and plates == 1 and pans == 1 and stoves == 1,
-		"eggs=%d plates=%d pans=%d stoves=%d" % [eggs, plates, pans, stoves],
+		eggs == 1 and breads == 1 and plates == 1 and pans == 1 and stoves == 1,
+		"eggs=%d breads=%d plates=%d pans=%d stoves=%d" % [eggs, breads, plates, pans, stoves],
 	)
 	if not counts_ok:
 		return false
@@ -837,6 +847,63 @@ func _check_orders() -> void:
 	# Leave the plate and egg where they are: DeliveryZone will deliver them
 	# now that the ticket matches, which the next frames absorb.
 	await _step(30)
+
+
+## Bread toasts in the toaster's slots without any pan or stove, burns if
+## left, and an egg-on-toast plate delivers when the ticket asks for it.
+func _check_toast() -> void:
+	var bread: FoodItem = _foods_tagged("bread")[0] if not _foods_tagged("bread").is_empty() else null
+	if not _check("toast.setup", bread != null and bread.state == FoodItem.State.RAW,
+			"bread=%s" % (bread.state_name() if bread else "<none>")):
+		return
+	_teleport(bread, TOASTER_SLOT_A)
+	var toasting: int = await _wait_until(
+		func() -> bool: return bread.state == FoodItem.State.COOKING, 20)
+	_check("toast.starts_without_stove", toasting >= 0,
+		"state=%s after 20 frames, slice at %s" % [bread.state_name(), bread.global_position])
+	var budget: int = int(bread.cook_duration * PHYSICS_TPS * 1.5) + 10
+	var toasted: int = await _wait_until(
+		func() -> bool: return bread.state == FoodItem.State.COOKED, budget)
+	_check("toast.cooks", toasted >= 0, "state=%s" % bread.state_name())
+	# The slots are always hot: lift the toast out before the egg's 4 s cook,
+	# or it burns (burn_duration 3 s) while waiting to be plated.
+	_teleport(bread, TOASTER_COUNTER_PARK_POS)
+	# Plate it with a cooked egg for Egg on Toast.
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	var egg: FoodItem = _first_food()
+	var pan: Pan = get_tree().get_first_node_in_group("pan") as Pan
+	var egg_cooked: bool = await _cook_until_cooked(egg, pan)
+	_order_system.set_current(1)
+	_teleport(plate, PASS_PLATE_POS)
+	await _step(10)
+	_teleport(bread, PASS_BREAD_POS)
+	await _step(10)
+	_check("toast.toast_only_rejected", egg_cooked and not _order_system.check_delivery(plate),
+		"accepted a toast-only plate: %s" % plate.container.contents_text())
+	_teleport(egg, PASS_EGG_POS + Vector3(0.0, 0.05, 0.0))
+	var before: int = _delivered_count
+	var delivered: int = await _wait_until(func() -> bool: return _delivered_count > before, 60)
+	# The plate is freed on delivery, so the detail cannot read it unguarded.
+	_check("toast.egg_on_toast_delivers", delivered >= 0, "no delivery within 60 frames: %s"
+		% (plate.container.contents_text() if is_instance_valid(plate) else "<plate freed>"))
+	await _step(30)
+	_check("toast.bread_respawns", _foods_tagged("bread").size() == 1 and _foods_tagged("bread")[0].state == FoodItem.State.RAW,
+		"breads=%d" % _foods_tagged("bread").size())
+	# Burn: a fresh slice left in the slot goes past COOKED to BURNED.
+	var slice: FoodItem = _foods_tagged("bread")[0]
+	_teleport(slice, TOASTER_SLOT_B)
+	var burn_budget: int = int((slice.cook_duration + slice.burn_duration) * PHYSICS_TPS * 1.5)
+	var burned: int = await _wait_until(func() -> bool: return slice.state == FoodItem.State.BURNED, burn_budget)
+	_check("toast.burns", burned >= 0, "state=%s" % slice.state_name())
+	# Binned bread is replaced.
+	_teleport(slice, TRASH_ZONE_POS)
+	var slice_ref: WeakRef = weakref(slice)
+	var freed: int = await _wait_until(func() -> bool: return slice_ref.get_ref() == null, 30)
+	await _step(5)
+	_check("toast.trash_replaces", freed >= 0 and _foods_tagged("bread").size() == 1,
+		"freed=%s breads=%d" % [freed >= 0, _foods_tagged("bread").size()])
+	_order_system.set_current(0)
+	_check("toast.ticket_back", _order_system.current_order_text() == "1× Fried Egg", "text=%s" % _order_system.current_order_text())
 
 
 ## Hold "walk" and "move_right": the player settles at half speed; release

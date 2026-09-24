@@ -19,6 +19,8 @@
 [ext_resource type="SceneReplicationConfig" path="res://scenes/sync/net_sync.tres" id="18_net_sync"]
 [ext_resource type="PackedScene" path="res://scenes/ui/lobby_panel.tscn" id="19_lobby_panel"]
 [ext_resource type="PackedScene" path="res://scenes/trash_can.tscn" id="20_trash_can"]
+[ext_resource type="PackedScene" path="res://scenes/toaster.tscn" id="21_toaster"]
+[ext_resource type="PackedScene" path="res://scenes/items/bread.tscn" id="22_bread"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 
@@ -235,6 +237,26 @@ item_scene = ExtResource("4_pan")
 refill_on_delivery = false
 spawn_parent_path = NodePath("../../Items")
 
+[node name="ToasterCounter" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="ToasterCounter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("BoxShape3D_counter_stove")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="ToasterCounter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("BoxMesh_counter")
+
+[node name="Toaster" parent="ToasterCounter" instance=ExtResource("21_toaster")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11, 1, 0)
+
+[node name="BreadSpawner" type="Node3D" parent="ToasterCounter"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 1.15, 0)
+script = ExtResource("9_item_spawner")
+item_scene = ExtResource("22_bread")
+spawn_parent_path = NodePath("../../Items")
+
 [node name="PlateRack" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0)
 
@@ -284,7 +306,7 @@ script = ExtResource("15_kitchen_net")
 spawn_path = NodePath("../../Players")
 
 [node name="ItemReplicator" type="MultiplayerSpawner" parent="Net"]
-_spawnable_scenes = PackedStringArray("res://scenes/items/egg.tscn", "res://scenes/items/pan.tscn", "res://scenes/items/plate.tscn")
+_spawnable_scenes = PackedStringArray("res://scenes/items/egg.tscn", "res://scenes/items/pan.tscn", "res://scenes/items/plate.tscn", "res://scenes/items/bread.tscn")
 spawn_path = NodePath("../../Items")
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="Net"]

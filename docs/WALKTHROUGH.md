@@ -77,7 +77,8 @@ In game, press **F3** for the overlay. Watch these while you play the loop:
 | Lift pan off stove | `pan.on_stove`, `egg.seconds` | `false`, frozen |
 | Egg done | `egg.state` | `COOKED` at 4.0s, `BURNED` at 8.0s |
 | Put egg on plate | `plate.contents` | `egg(COOKED)` |
-| Set plate on the Pass | `order`, HUD counter | counter +1, new plate and egg spawn |
+| Set plate on the Pass | `order`, HUD counter | counter +1, new plate and egg spawn; `order` shows the ticket text (`1× Fried Egg` / `1× Egg on Toast`) and may switch to the other recipe |
+| Bread in a toaster slot | `plate.contents` after plating | toast reaches `COOKED` in 3 s with no pan or stove, `BURNED` at 6 s; the plate lists `bread(COOKED)` next to the egg |
 | Hold Ctrl / C | `crouched` | `true`; stays `true` under the order board until you back out |
 
 Controls: WASD move, mouse look, Space jump, Ctrl/C crouch, E grab/release,
@@ -90,7 +91,7 @@ F throw, Escape pause, F3 overlay.
 | Egg never starts cooking | `pan.on_stove` | Pan not overlapping the stove, or the stove lost its `stove` group | `scripts/systems/stove_detector.gd`, `scenes/kitchen.tscn` (Stove `groups=["stove"]`) |
 | `pan.on_stove` true but egg stuck `RAW` | Collision shapes view | Egg landed on the stove top, not in the CookSlot box. Stand right at the stove and keep the view level; the hold point is 1.2 m ahead | `HoldTarget` in `scenes/player.tscn` |
 | Plated egg sitting on the pan does not cook | `plate.contents` | By design: food on a plate is served, not cooking | `CookSlot` skips `FoodItem.is_contained()` |
-| Plate on the Pass does not deliver | `plate.contents`, `held` | Egg not exactly `COOKED`, wrong count, or plate/egg still in `held` | `scripts/systems/order_system.gd`, `delivery_zone.gd` |
+| Plate on the Pass does not deliver | `order`, `plate.contents`, `held` | The plate must hold exactly the ticket's ingredient list (`Recipe.ingredients`: `egg` for Fried Egg, `egg` + `bread` for Egg on Toast), every item `COOKED`; compare against `contents_text()`. Otherwise plate/food still in `held` | `scripts/recipes/recipe.gd` (`matches`), `resources/recipes/*.tres`, `scripts/systems/order_system.gd`, `delivery_zone.gd` |
 | E does nothing | `held` | Item not on layer 3 (Items), not in `grabbable`, out of `grab_range` (2.5 m), or a wall blocks line of sight | `scripts/systems/grab_controller.gd` |
 | Egg flies out when grabbing the pan | — | **Known open bug** (the grab snaps the pan's velocity). Carry the egg separately | Plan backlog, `tests/README.md` → `carry.pan_keeps_egg` |
 | Stuck crouched | `crouched` | Ceiling over the standing capsule (order board underside is 1.9 m) | `Player._has_stand_clearance()` |
