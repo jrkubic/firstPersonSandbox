@@ -120,7 +120,7 @@ steps from Settings back to the buttons, then resumes the game.
 | Shift    | Walk (hold): 20% speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings  Solo: Spawn dummy puts a stand-in player in the kitchen so you can see what others look like. |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings. Solo: Spawn dummy adds a stand-in player so you can see what others look like. |
 | F3       | Toggle debug overlay            |
 
 These are the defaults: every key above except Escape can be rebound from
