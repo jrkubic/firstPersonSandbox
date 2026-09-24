@@ -96,7 +96,6 @@ func _ready() -> void:
 	skin.build(head)
 	skin.shadows_only = mine
 	skin.set_parts_visible(true)  # own body still casts its shadow
-	skin.visible = true
 	# Name tag above the hat on other players only; it follows the roster.
 	name_tag.visible = not mine
 	_refresh_name_tag()

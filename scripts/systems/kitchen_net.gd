@@ -79,8 +79,19 @@ func is_practice() -> bool:
 ## replicates it to every peer.
 func spawn_player(peer_id: int) -> Player:
 	var point: Node3D = _free_spawn_point()
-	return _player_spawner.spawn([peer_id, point.global_position,
-		player_count() % ChefSkin.APRON_COLORS.size()]) as Player
+	return _player_spawner.spawn([peer_id, point.global_position, _free_color_index()]) as Player
+
+
+## Lowest apron colour no current player wears, so a leave-then-join never
+## duplicates a colour; wraps by player count once every colour is taken.
+func _free_color_index() -> int:
+	var taken: Array[int] = []
+	for player in _live_players():
+		taken.append(player.skin_color_index)
+	for index in range(ChefSkin.APRON_COLORS.size()):
+		if not taken.has(index):
+			return index
+	return player_count() % ChefSkin.APRON_COLORS.size()
 
 
 ## Players still in the kitchen; the solo dummy is never one of them (it is
