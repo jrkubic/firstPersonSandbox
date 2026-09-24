@@ -120,7 +120,7 @@ steps from Settings back to the buttons, then resumes the game.
 | Shift    | Walk (hold): 20% speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings  Solo: Spawn dummy puts a stand-in player in the kitchen so you can see what others look like. |
 | F3       | Toggle debug overlay            |
 
 These are the defaults: every key above except Escape can be rebound from
@@ -221,7 +221,7 @@ watchdog trips. The 121 checks are:
 - `trash.*` (7) — a held egg in the bin survives; once released it is freed
   and its spawner refills; a binned pan and empty plate are replaced the
   same way (the pan back on the stove)
-- `pause_settings.*` (3) — Escape opens the pause menu on its buttons, its
+- `pause_settings.*` (3), `dummy.*` (4) — Escape opens the pause menu on its buttons, its
   Settings button swaps in the controls page, and Escape backs out to the
   buttons before resuming (no rebinding, so `settings.cfg` is never written)
 

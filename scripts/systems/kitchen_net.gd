@@ -85,9 +85,57 @@ func spawn_player(peer_id: int) -> Player:
 func _live_players() -> Array[Player]:
 	var live: Array[Player] = []
 	for node in _players.get_children():
-		if not node.is_queued_for_deletion():
+		if not node.is_queued_for_deletion() and not node.is_in_group(Groups.DUMMY):
 			live.append(node as Player)
 	return live
+
+
+# --- Solo dummy --------------------------------------------------------------
+
+const DUMMY_NAME: String = "Dummy"
+## A peer id nobody has, so the Player scene treats the dummy as a remote
+## copy: skin visible, camera off, no input.
+const DUMMY_PEER: int = 999
+
+
+func has_dummy() -> bool:
+	return _players.get_node_or_null(DUMMY_NAME) != null
+
+
+## Solo aid: toggles a non-networked stand-in Player at the second spawn
+## point so you can see what other players look like. Offline only; it is
+## never counted as a player and never replicated. Returns the new state.
+func toggle_dummy() -> bool:
+	if NetSession.is_online():
+		return has_dummy()
+	var existing: Node = _players.get_node_or_null(DUMMY_NAME)
+	if existing != null:
+		existing.queue_free()
+		return false
+	var dummy: Player = PLAYER_SCENE.instantiate() as Player
+	dummy.name = DUMMY_NAME
+	dummy.add_to_group(Groups.DUMMY)
+	dummy.set_multiplayer_authority(DUMMY_PEER)
+	var point: Vector3 = _spawn_point_for(1).global_position
+	dummy.position = Vector3(point.x, 0.0, point.z)
+	_players.add_child(dummy)
+	var me: Player = get_player(multiplayer.get_unique_id())
+	if me != null:
+		var target := Vector3(me.global_position.x, dummy.global_position.y, me.global_position.z)
+		if target.distance_to(dummy.global_position) > 0.01:
+			dummy.look_at(target, Vector3.UP)
+	_animate_dummy(dummy)
+	return true
+
+
+## Idle motion so the dummy reads as a person: the head sweeps side to side.
+func _animate_dummy(dummy: Player) -> void:
+	var head: Node3D = dummy.get_node("Head") as Node3D
+	var tween: Tween = dummy.create_tween().set_loops()
+	tween.tween_property(head, "rotation:y", 0.5, 1.6)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(head, "rotation:y", -0.5, 1.6)\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 ## First spawn point with no current Player within 1 m of it; when every

@@ -14,6 +14,7 @@ extends CanvasLayer
 @onready var invite_button: Button = $MarginContainer/VBoxContainer/InviteButton
 @onready var start_run_button: Button = $MarginContainer/VBoxContainer/StartRunButton
 @onready var settings_button: Button = %SettingsButton
+@onready var dummy_button: Button = %DummyButton
 @onready var menu_button: Button = $MarginContainer/VBoxContainer/MenuButton
 @onready var quit_button: Button = $MarginContainer/VBoxContainer/QuitButton
 
@@ -32,6 +33,7 @@ func _ready() -> void:
 	start_run_button.pressed.connect(_on_start_run_pressed)
 	settings_button.pressed.connect(_show_settings)
 	settings_page.back_pressed.connect(_show_buttons)
+	dummy_button.pressed.connect(_on_dummy_pressed)
 	menu_button.pressed.connect(_on_menu_pressed)
 	quit_button.pressed.connect(_on_quit_pressed)
 
@@ -66,6 +68,8 @@ func _pause() -> void:
 	var host: bool = NetSession.role == NetSession.Role.HOST
 	invite_button.visible = host and SteamManager.is_ready()
 	start_run_button.visible = host and _net != null and _net.is_practice()
+	dummy_button.visible = not NetSession.is_online() and _net != null
+	_refresh_dummy_button()
 	menu_button.text = "Leave" if NetSession.is_online() else "Main Menu"
 	visible = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
@@ -82,6 +86,19 @@ func _resume() -> void:
 
 func _on_invite_pressed() -> void:
 	SteamManager.open_invite_dialog(NetSession.lobby_id)
+
+
+## Solo only: puts a stand-in player in the kitchen (or removes it) so you
+## can see what other players look like.
+func _on_dummy_pressed() -> void:
+	if _net:
+		_net.toggle_dummy()
+	_refresh_dummy_button()
+
+
+func _refresh_dummy_button() -> void:
+	var present: bool = _net != null and _net.has_dummy()
+	dummy_button.text = "Remove dummy" if present else "Spawn dummy"
 
 
 func _on_start_run_pressed() -> void:

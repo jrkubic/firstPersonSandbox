@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 121
+const EXPECTED_CHECKS: int = 125
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -124,6 +124,7 @@ func _run() -> void:
 	await _check_toast()
 	await _check_walk()
 	await _check_trash()
+	await _check_dummy()
 	await _check_pause_settings()
 	_finish()
 
@@ -1092,6 +1093,30 @@ func _ensure_autoloads() -> void:
 ## Escape menu reaches Settings and backs out one level at a time. The tree
 ## is paused while the menu is open (offline), so waits use process frames.
 ## Nothing here rebinds or saves, so the real settings.cfg is never written.
+## Solo dummy: a stand-in Player that behaves like a remote peer's copy
+## (skin on, camera off, no authority) and is never counted as a player.
+func _check_dummy() -> void:
+	var on: bool = _net.toggle_dummy()
+	await _step(2)
+	var dummy: Player = _kitchen.get_node_or_null("Players/Dummy") as Player
+	if not _check("dummy.spawns", on and dummy != null, "toggle=%s node=%s" % [on, dummy != null]):
+		_check("dummy.looks_remote", false, "skipped")
+		_check("dummy.not_counted", false, "skipped")
+		_check("dummy.removes", false, "skipped")
+		return
+	var camera: Camera3D = dummy.get_node("Head/Camera3D") as Camera3D
+	_check("dummy.looks_remote",
+		not dummy.is_multiplayer_authority() and (dummy.get_node("Skin") as Node3D).visible
+		and not camera.current,
+		"authority=%s skin=%s camera=%s" % [dummy.is_multiplayer_authority(),
+			(dummy.get_node("Skin") as Node3D).visible, camera.current])
+	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
+	var off: bool = _net.toggle_dummy()
+	await _step(2)
+	_check("dummy.removes", not off and _kitchen.get_node_or_null("Players/Dummy") == null,
+		"toggle=%s still_present=%s" % [off, _kitchen.get_node_or_null("Players/Dummy") != null])
+
+
 func _check_pause_settings() -> void:
 	var pause_menu: CanvasLayer = _kitchen.get_node("PauseMenu") as CanvasLayer
 	var buttons: Control = pause_menu.get_node("%VBoxContainer") as Control
