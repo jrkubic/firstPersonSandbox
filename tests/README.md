@@ -56,6 +56,7 @@ headless physics still advances in real time.
 | `crouch.*` | Holding `crouch`: `is_crouched()`, the Head drops toward `crouch_height_offset`, the capsule shrinks to `crouch_capsule_height` with its bottom staying on the floor. Releasing: stands up, Head and capsule restored. |
 | `plate_on_pan.*` | A freshly cooked egg is plated and the plate is set down on the pan while the pan is on the stove. The plate's `FoodContainer` reports the egg (`is_contained()`), the pan's `CookSlot` still overlaps it (`has_food()`), yet `cook_progress` does not move for 120 frames and the state stays `COOKED`; the egg is still in both volumes afterwards, so the freeze is due to containment rather than the egg escaping. Moving the plate away and dropping the egg back in the pan clears containment and progress resumes. |
 | `pause_settings.*` | Runs last. A `pause` action press through `Input.parse_input_event` opens `PauseMenu` on its buttons (`%VBoxContainer` visible, `%SettingsPage` hidden); emitting `%SettingsButton.pressed` swaps the controls page in; a second `pause` press backs out to the buttons rather than resuming; a third resumes. The tree is paused meanwhile (offline), so the waits count process frames. Nothing is rebound or saved, so the real `settings.cfg` is never written. |
+| `dummy.*` | Solo dummy: spawns as a remote-looking chef (skin on, not authority, camera off), is not counted as a player, is solid to walk into, wears a "Dummy" tag, and is removed by the second toggle. |
 
 ### `carry.pan_keeps_egg` (expected failure)
 
