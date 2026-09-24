@@ -18,7 +18,14 @@ var _slider_label: Label
 func _ready() -> void:
 	_build()
 	Settings.controls_changed.connect(_refresh)
+	visibility_changed.connect(_on_visibility_changed)
 	_refresh()
+
+
+## A hidden page must never keep capturing keys in _input.
+func _on_visibility_changed() -> void:
+	if not visible:
+		_stop_listening()
 
 
 func key_button(action: StringName) -> Button:
@@ -63,6 +70,8 @@ func _build() -> void:
 	_slider.max_value = Settings.MAX_SENSITIVITY
 	_slider.step = 0.0001
 	_slider.value_changed.connect(func(value: float) -> void: Settings.mouse_sensitivity = value)
+	# The setter does not save (a drag emits many values); save once at the end.
+	_slider.drag_ended.connect(func(_changed: bool) -> void: Settings.save())
 	sensitivity_row.add_child(_slider)
 	_slider_label = Label.new()
 	_slider_label.add_theme_font_size_override("font_size", 22)
@@ -83,6 +92,7 @@ func _build() -> void:
 	back.add_theme_font_size_override("font_size", 20)
 	back.pressed.connect(func() -> void:
 		_stop_listening()
+		Settings.save()  # covers keyboard-driven slider changes (no drag_ended)
 		back_pressed.emit())
 	buttons.add_child(back)
 	_expose(back)

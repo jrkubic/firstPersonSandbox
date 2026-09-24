@@ -253,7 +253,7 @@ body first sets `Settings.config_path` to `user://settings_test.cfg`, deletes
 any stale copy and calls `reset_to_defaults()`, and deletes the temp file
 again at the end, so the developer's real `user://settings.cfg` is never
 touched. It exits `1` if any check fails or if the number of checks run
-differs from `EXPECTED_CHECKS` (10 today).
+differs from `EXPECTED_CHECKS` (11 today).
 
 ```sh
 Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/settings_test.gd
@@ -267,9 +267,10 @@ Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/s
 | `bind.updates_inputmap` | The `InputMap` events for `interact` now contain a physical `G` and no `E`. |
 | `bind.swaps_on_conflict` | `bind(&"throw", KEY_G)` gives throw `G` and hands interact throw's old `F`, so nothing is left unbound. |
 | `save.written` | The temp config exists and stores `controls/throw = KEY_G`. |
-| `save.sensitivity` | Assigning `mouse_sensitivity = 0.004` writes `mouse/sensitivity` (the setter saves). |
+| `save.sensitivity` | Assigning `mouse_sensitivity = 0.004` then calling `save()` writes `mouse/sensitivity` (the setter clamps and emits but does not save; the page saves when a slider drag ends or on Back). |
 | `reset.restores` | `reset_to_defaults` returns interact to `E`, throw to `F` and sensitivity to `DEFAULT_SENSITIVITY`. |
 | `load.applies` | A hand-written config (`interact = KEY_H`, `sensitivity = 0.001`) is applied to both `Settings` and the `InputMap` by `load_settings`. |
+| `load.does_not_write` | That `load_settings` call left the file's modified time and bytes unchanged: loading never rewrites the config, so a boot cannot create or clobber it. |
 | `load.ignores_unknown_action` | `pause` (Escape) is not in `Settings.REBINDABLE`. |
 
 Two engine quirks the autoload works around, both of which would otherwise

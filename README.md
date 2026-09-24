@@ -91,9 +91,11 @@ Main menu > **Settings** lists every gameplay action with its current key.
 Click a key button, then press the new key (Escape cancels the listen). If
 another action already uses that key the two actions swap, so nothing is
 ever left unbound. The **Mouse sensitivity** slider applies immediately and
-**Reset to defaults** restores the shipped bindings. Every change is saved
-straight away to `%APPDATA%\Godot\app_userdata\firstPersonSandbox\settings.cfg`
-and applied again at boot. Escape itself cannot be rebound, so the menus can
+**Reset to defaults** restores the shipped bindings (crouch keeps one key,
+Ctrl, after any change). Key changes and Reset are saved straight away, and
+the sensitivity when you release the slider or press Back, to
+`%APPDATA%\Godot\app_userdata\firstPersonSandbox\settings.cfg`; the file is
+applied again at boot and never rewritten by loading it. Escape itself cannot be rebound, so the menus can
 always be backed out of.
 
 ## Controls
@@ -256,10 +258,10 @@ needed; it runs in a few seconds.
 the `Settings` autoload on its own: the shipped defaults are read back from
 the `InputMap` (E for interact, Shift for walk), `bind` updates both
 `Settings` and the `InputMap`, binding a key another action already uses
-swaps the two, every change is written to the config file,
+swaps the two, `bind` and `save` write the config file,
 `reset_to_defaults` restores keys and sensitivity, a hand-written config is
-applied by `load_settings`, and `pause` (Escape) is not rebindable. Its 10
-checks run against a temp file (`user://settings_test.cfg`, deleted at the
+applied by `load_settings` without the file being rewritten, and `pause`
+(Escape) is not rebindable. Its 11 checks run against a temp file (`user://settings_test.cfg`, deleted at the
 end), never the real `settings.cfg`.
 
 ```sh

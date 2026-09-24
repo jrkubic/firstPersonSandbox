@@ -4,7 +4,7 @@ extends Node
 ## developer's real user://settings.cfg.
 
 const TEMP_CONFIG: String = "user://settings_test.cfg"
-const EXPECTED_CHECKS: int = 10
+const EXPECTED_CHECKS: int = 11
 
 var _passed: int = 0
 var _failed: int = 0
@@ -41,7 +41,8 @@ func _run() -> void:
 	_check("save.written", err == OK and int(saved.get_value("controls", "throw", 0)) == KEY_G,
 		"load err=%d throw=%s" % [err, str(saved.get_value("controls", "throw", null))])
 
-	Settings.mouse_sensitivity = 0.004
+	Settings.mouse_sensitivity = 0.004  # the setter clamps and emits; saving is explicit
+	Settings.save()
 	saved.load(TEMP_CONFIG)
 	_check("save.sensitivity", is_equal_approx(float(saved.get_value("mouse", "sensitivity", 0.0)), 0.004),
 		"sensitivity=%s" % str(saved.get_value("mouse", "sensitivity", null)))
@@ -56,10 +57,19 @@ func _run() -> void:
 	handmade.set_value("controls", "interact", KEY_H)
 	handmade.set_value("mouse", "sensitivity", 0.001)
 	handmade.save(TEMP_CONFIG)
+	var temp_absolute: String = ProjectSettings.globalize_path(TEMP_CONFIG)
+	var mtime_before: int = FileAccess.get_modified_time(temp_absolute)
+	var text_before: String = FileAccess.get_file_as_string(temp_absolute)
 	Settings.load_settings()
 	_check("load.applies", Settings.key_for(&"interact") == KEY_H and _inputmap_has(&"interact", KEY_H)
 		and is_equal_approx(Settings.mouse_sensitivity, 0.001),
 		"interact=%s sens=%f" % [Settings.key_name(&"interact"), Settings.mouse_sensitivity])
+	# mtime has 1 s granularity, so also compare the bytes: a rewrite by
+	# save() would add the nine other controls keys.
+	var mtime_after: int = FileAccess.get_modified_time(temp_absolute)
+	var text_after: String = FileAccess.get_file_as_string(temp_absolute)
+	_check("load.does_not_write", mtime_after == mtime_before and text_after == text_before,
+		"mtime %d -> %d, text changed=%s" % [mtime_before, mtime_after, str(text_after != text_before)])
 	_check("load.ignores_unknown_action", not Settings.REBINDABLE.has(&"pause"), "pause must not be rebindable")
 
 	Settings.reset_to_defaults()

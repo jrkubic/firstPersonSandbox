@@ -32,10 +32,11 @@ const MAX_SENSITIVITY: float = 0.006
 ## Where settings are stored. Tests point this at a temp file.
 var config_path: String = "user://settings.cfg"
 
+## Clamped on assignment and announced, but not saved: a slider emits many
+## values per drag, so the UI calls save() when the drag ends or on Back.
 var mouse_sensitivity: float = DEFAULT_SENSITIVITY:
 	set(value):
 		mouse_sensitivity = clampf(value, MIN_SENSITIVITY, MAX_SENSITIVITY)
-		save()
 		controls_changed.emit()
 
 # action -> physical keycode as the project ships it (captured before any
@@ -78,8 +79,8 @@ func bind(action: StringName, key: Key) -> void:
 		return
 	var previous: Key = key_for(action)
 	for other: StringName in REBINDABLE:
-		if other != action and key_for(other) == key:
-			_apply(other, previous)
+		if other != action and key_for(other) == key and previous != KEY_NONE:
+			_apply(other, previous)  # swap; never erase the other action
 	_apply(action, key)
 	save()
 	controls_changed.emit()
@@ -88,9 +89,12 @@ func bind(action: StringName, key: Key) -> void:
 func reset_to_defaults() -> void:
 	for action: StringName in REBINDABLE:
 		_apply(action, _defaults[action])
-	mouse_sensitivity = DEFAULT_SENSITIVITY  # setter saves and emits
+	mouse_sensitivity = DEFAULT_SENSITIVITY  # setter clamps and emits
+	save()
 
 
+## Applies the config file to the InputMap and sensitivity. Never writes the
+## file (a boot must not create or rewrite it); emits controls_changed once.
 func load_settings() -> void:
 	var config := ConfigFile.new()
 	if config.load(config_path) != OK:
@@ -107,9 +111,12 @@ func load_settings() -> void:
 	if config.has_section_key("mouse", "sensitivity"):
 		sensitivity = config.get_value("mouse", "sensitivity")
 	if sensitivity is float:
-		mouse_sensitivity = float(sensitivity)  # setter clamps, saves, emits
-	else:
-		controls_changed.emit()
+		# Through the setter for the clamp, with its emit held back so the
+		# single emit below is the only one.
+		set_block_signals(true)
+		mouse_sensitivity = float(sensitivity)
+		set_block_signals(false)
+	controls_changed.emit()
 
 
 func save() -> void:
@@ -120,6 +127,8 @@ func save() -> void:
 	config.save(config_path)
 
 
+# Replaces every event on the action with the one key (rebindable actions
+# are key-only today; any mouse/joypad event on them would be dropped too).
 func _apply(action: StringName, key: Key) -> void:
 	InputMap.action_erase_events(action)
 	if key == KEY_NONE:
