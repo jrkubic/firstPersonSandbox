@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/menu.gd" id="2_menu"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_diorama.tscn" id="3_diorama"]
+[ext_resource type="Script" path="res://scripts/ui/settings_page.gd" id="4_settings_page"]
 
 [sub_resource type="FontVariation" id="FontVariation_vjb58"]
 
@@ -104,6 +105,27 @@ theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
 text = "Play"
+
+[node name="SettingsButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MainPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_colors/font_pressed_color = Color(1, 0.3529412, 0.29411766, 1)
+theme_override_colors/font_hover_color = Color(0.9490196, 0.8235294, 0.07058824, 1)
+theme_override_fonts/font = SubResource("FontVariation_con2f")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("StyleBoxEmpty_mhnvy")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_4ytvr")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_g3eks")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_v86rl")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_13sgg")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_i6lef")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_70i5f")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_mj5lg")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
+text = "Settings"
 
 [node name="QuitButton" type="Button" parent="Control/MarginContainer/VBoxContainer/MainPage"]
 unique_name_in_owner = true
@@ -246,6 +268,12 @@ theme_override_styles/disabled = SubResource("StyleBoxEmpty_ufwb2")
 theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_6cdou")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_i42df")
 text = "Back"
+
+[node name="SettingsPage" type="VBoxContainer" parent="Control/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+script = ExtResource("4_settings_page")
 
 [node name="StatusLabel" type="Label" parent="Control/MarginContainer/VBoxContainer"]
 unique_name_in_owner = true

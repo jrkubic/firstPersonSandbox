@@ -1,13 +1,16 @@
 extends CanvasLayer
-## Title menu: Play > Solo / Multiplayer > Host via Steam. Join is by Steam
-## invite only, so the Multiplayer page has a single action plus help text.
+## Title menu: Play > Solo / Multiplayer > Host via Steam, plus a Settings
+## page (key rebinding and mouse sensitivity). Join is by Steam invite only,
+## so the Multiplayer page has a single action plus help text.
 
 @export_file("*.tscn") var game_scene: String = "res://scenes/kitchen.tscn"
 
 @onready var main_page: Control = %MainPage
 @onready var play_page: Control = %PlayPage
 @onready var multiplayer_page: Control = %MultiplayerPage
+@onready var settings_page: Control = %SettingsPage
 @onready var play_button: Button = %PlayButton
+@onready var settings_button: Button = %SettingsButton
 @onready var quit_button: Button = %QuitButton
 @onready var solo_button: Button = %SoloButton
 @onready var multiplayer_button: Button = %MultiplayerButton
@@ -20,6 +23,8 @@ extends CanvasLayer
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	play_button.pressed.connect(func() -> void: _show_page(play_page))
+	settings_button.pressed.connect(func() -> void: _show_page(settings_page))
+	settings_page.back_pressed.connect(func() -> void: _show_page(main_page))
 	quit_button.pressed.connect(_on_quit_pressed)
 	solo_button.pressed.connect(_on_solo_pressed)
 	multiplayer_button.pressed.connect(func() -> void: _show_page(multiplayer_page))
@@ -42,12 +47,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		if multiplayer_page.visible:
 			_show_page(play_page)
-		elif play_page.visible:
+		elif play_page.visible or settings_page.visible:
 			_show_page(main_page)
 
 
 func _show_page(page: Control) -> void:
-	for candidate: Control in [main_page, play_page, multiplayer_page]:
+	for candidate: Control in [main_page, play_page, multiplayer_page, settings_page]:
 		candidate.visible = candidate == page
 
 

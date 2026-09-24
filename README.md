@@ -85,6 +85,17 @@ appears at its station.
    **Play Again** and **Back to Practice** (reopens the lobby); anyone can
    **Leave**. If the host quits, guests return to the menu with `Host left`.
 
+### Settings
+
+Main menu > **Settings** lists every gameplay action with its current key.
+Click a key button, then press the new key (Escape cancels the listen). If
+another action already uses that key the two actions swap, so nothing is
+ever left unbound. The **Mouse sensitivity** slider applies immediately and
+**Reset to defaults** restores the shipped bindings. Every change is saved
+straight away to `%APPDATA%\Godot\app_userdata\firstPersonSandbox\settings.cfg`
+and applied again at boot. Escape itself cannot be rebound, so the menus can
+always be backed out of.
+
 ## Controls
 
 | Input    | Action                          |
@@ -98,6 +109,9 @@ appears at its station.
 | F        | Throw held item                 |
 | Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only) |
 | F3       | Toggle debug overlay            |
+
+These are the defaults: every key above except Escape can be rebound from
+the main menu's **Settings** page.
 
 Grabbing is forgiving: if the centre dot narrowly misses a small item, a
 short sphere sweep along the aim line (`grab_assist_radius`, default 0.12 m)
@@ -220,16 +234,36 @@ timer ticking. Per-check table: `tests/README.md`.
 
 `tests/menu_test.gd` (launcher for `tests/menu_test_body.gd`, split like the
 others) instantiates `scenes/menu.tscn` headless and drives the buttons by
-emitting `pressed`. Its 16 checks cover the page flow (Main > Play > Solo /
+emitting `pressed`. Its 21 checks cover the page flow (Main > Play > Solo /
 Multiplayer > Host via Steam, and Back on each page), that the Solo, Host and
-Quit buttons are wired, the Host button's label, the offline status line, and
-the background diorama (present, three chefs, its camera is current, and at
-least two chefs have moved after 90 frames). Steam is never available
-headless, so it also asserts Host is disabled. No addon or display needed; it
-runs in a few seconds.
+Quit buttons are wired, the Host button's label, the offline status line, the
+Settings page (opens from Main, one row per rebindable action, shows the
+current key, rebinds when a key press is fed through
+`Input.parse_input_event`, and Reset restores the default; it points
+`Settings.config_path` at a temp file first so the developer's bindings are
+untouched), and the background diorama (present, three chefs, its camera is
+current, and at least two chefs have moved after 90 frames). Steam is never
+available headless, so it also asserts Host is disabled. No addon or display
+needed; it runs in a few seconds.
 
 ```sh
 "<Godot console exe>" --headless --path <project> --script res://tests/menu_test.gd
+```
+
+### Settings test
+
+`tests/settings_test.gd` (launcher for `tests/settings_test_body.gd`) checks
+the `Settings` autoload on its own: the shipped defaults are read back from
+the `InputMap` (E for interact, Shift for walk), `bind` updates both
+`Settings` and the `InputMap`, binding a key another action already uses
+swaps the two, every change is written to the config file,
+`reset_to_defaults` restores keys and sensitivity, a hand-written config is
+applied by `load_settings`, and `pause` (Escape) is not rebindable. Its 10
+checks run against a temp file (`user://settings_test.cfg`, deleted at the
+end), never the real `settings.cfg`.
+
+```sh
+"<Godot console exe>" --headless --path <project> --script res://tests/settings_test.gd
 ```
 
 ## Manual smoke test
@@ -332,21 +366,27 @@ number decides whether holder-owned physics is worth building.
   `items/{egg,pan,plate}.tscn`,
   `sync/{player,egg,container,loop,orders,net}_sync.tres`
   (`MultiplayerSynchronizer` replication configs)
-- `scripts/` — `player.gd`, `menu.gd`, `groups.gd` (node-group name
-  constants), `items/{food_item,pan,plate}.gd`,
+- `scripts/` — `player.gd`, `menu.gd`, `settings.gd` (the `Settings`
+  autoload: one rebindable key per action and the mouse sensitivity, applied
+  to the `InputMap` and persisted to `user://settings.cfg`), `groups.gd`
+  (node-group name constants), `items/{food_item,pan,plate}.gd`,
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
   Steam autoload, per-item replication and smoothing),
   `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,trash_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
-  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama}.gd`
+  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama,settings_page}.gd`
   (`menu_diorama.gd` builds the menu's flat-shaded kitchen and three tweened
-  capsule chefs from primitives in `_ready`; no art assets)
+  capsule chefs from primitives in `_ready`; no art assets.
+  `settings_page.gd` builds the menu's Controls page in code: one row per
+  rebindable action, the sensitivity slider, Reset and Back)
 - `scene.gltf`, `scene.bin`, `textures/` — the old Sketchfab menu background.
   No scene uses them any more (the menu draws `menu_diorama.tscn` instead);
   they can be deleted.
 - `tests/` — `smoke_test.gd` (headless smoke test entry point),
   `smoke_test_body.gd` (its checks), `net_test.gd` / `net_test_body.gd`
   (two-peer ENet test) with `run_net_test.ps1`, `menu_test.gd` /
-  `menu_test_body.gd` (headless menu flow test), and their `README.md`
+  `menu_test_body.gd` (headless menu flow test), `settings_test.gd` /
+  `settings_test_body.gd` (headless `Settings` autoload test), and their
+  `README.md`
 - `steam_appid.txt` — App ID 480 for development; never exported
 - `addons/godotsteam/` — GodotSteam GDExtension, git-ignored (see Co-op
   setup)

@@ -5,7 +5,7 @@ extends Node
 
 const MENU_SCENE: String = "res://scenes/menu.tscn"
 const WATCHDOG_SECONDS: float = 60.0
-const EXPECTED_CHECKS: int = 16
+const EXPECTED_CHECKS: int = 21
 
 var _passed: int = 0
 var _failed: int = 0
@@ -78,6 +78,36 @@ func _run() -> void:
 		"quit connections=%d" % quit.pressed.get_connections().size())
 	_check("menu.host_wired", host.pressed.get_connections().size() == 1,
 		"host connections=%d" % host.pressed.get_connections().size())
+
+	# Settings page: opens, lists every rebindable action, rebinds by key press,
+	# resets. Uses a temp config so the developer's bindings are untouched.
+	Settings.config_path = "user://menu_test_settings.cfg"
+	Settings.reset_to_defaults()
+	var settings_page: Control = _menu.get_node_or_null("%SettingsPage") as Control
+	_press("%SettingsButton")
+	_check("settings.opens", settings_page != null and settings_page.visible and not main_page.visible,
+		"settings=%s main=%s" % [settings_page != null and settings_page.visible, main_page.visible])
+	var rows: Node = settings_page.get_node("Rows")
+	_check("settings.one_row_per_action", rows.get_child_count() == Settings.REBINDABLE.size() * 2,
+		"grid children=%d" % rows.get_child_count())
+	var interact_button: Button = settings_page.key_button(&"interact")
+	_check("settings.shows_current_key", interact_button != null and interact_button.text == "E",
+		"text=%s" % (interact_button.text if interact_button else "<null>"))
+	interact_button.pressed.emit()
+	var press := InputEventKey.new()
+	press.physical_keycode = KEY_G
+	press.pressed = true
+	Input.parse_input_event(press)
+	await get_tree().process_frame
+	_check("settings.rebinds_on_key", Settings.key_for(&"interact") == KEY_G and interact_button.text == "G",
+		"interact=%s button=%s" % [Settings.key_name(&"interact"), interact_button.text])
+	_press("%ResetButton")
+	_check("settings.reset", Settings.key_for(&"interact") == KEY_E and interact_button.text == "E",
+		"interact=%s button=%s" % [Settings.key_name(&"interact"), interact_button.text])
+	_press("%SettingsBackButton")
+	var temp_absolute: String = ProjectSettings.globalize_path(Settings.config_path)
+	if FileAccess.file_exists(temp_absolute):
+		DirAccess.remove_absolute(temp_absolute)
 
 	var diorama: Node3D = _menu.get_node_or_null("Background/MenuDiorama") as Node3D
 	if _check("diorama.present", diorama != null, "Background/MenuDiorama missing"):

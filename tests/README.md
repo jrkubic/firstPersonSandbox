@@ -194,9 +194,10 @@ its departure.
 holds the checks (same launcher/body split as the other two). The body
 instantiates `scenes/menu.tscn` as the current scene, waits one frame for
 `_ready`, then drives the flow by emitting each button's `pressed` signal and
-reading page visibility, then watches the background diorama for 90 frames.
-No Steam, addon or display is needed; the run takes a few seconds. A 60 s
-watchdog fails it if it stalls.
+reading page visibility, exercises the Settings page (rebind by a key press
+fed through `Input.parse_input_event`, then Reset), then watches the
+background diorama for 90 frames. No Steam, addon or display is needed; the
+run takes a few seconds. A 60 s watchdog fails it if it stalls.
 
 ```sh
 Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/menu_test.gd
@@ -207,7 +208,12 @@ The menu's pages are `VBoxContainer`s toggled by `scripts/menu.gd`
 unique name (`%MainPage`, `%PlayButton`, ...), so renaming or re-parenting a
 node inside a page does not break the test as long as `unique_name_in_owner`
 stays set. It exits `1` if any check fails or if the number of checks run
-differs from `EXPECTED_CHECKS` (16 today).
+differs from `EXPECTED_CHECKS` (21 today).
+
+Before the `settings.*` checks the body points `Settings.config_path` at
+`user://menu_test_settings.cfg` and calls `reset_to_defaults()`, so the
+developer's real `settings.cfg` is never read or written; the temp file is
+deleted after the Back press.
 
 | Check | What it asserts |
 |-------|-----------------|
@@ -223,6 +229,11 @@ differs from `EXPECTED_CHECKS` (16 today).
 | `menu.solo_wired` | `%SoloButton.pressed` has exactly one connection. |
 | `menu.quit_wired` | `%QuitButton.pressed` has exactly one connection. |
 | `menu.host_wired` | `%HostButton.pressed` has exactly one connection. |
+| `settings.opens` | Settings on Main shows `%SettingsPage` and hides Main. |
+| `settings.one_row_per_action` | The page's `Rows` grid has two children (label + key button) per `Settings.REBINDABLE` action. |
+| `settings.shows_current_key` | `key_button(&"interact").text` reads `E`. |
+| `settings.rebinds_on_key` | After emitting that button's `pressed` and feeding a physical `G` key press through `Input.parse_input_event`, one frame later `Settings.key_for(&"interact")` is `KEY_G` and the button reads `G`. |
+| `settings.reset` | `%ResetButton` puts interact back to `E` and the button text follows; `%SettingsBackButton` then returns to Main. |
 | `diorama.present` | `Background/MenuDiorama` exists. The three checks below are recorded as failed if not. |
 | `diorama.three_chefs` | `MenuDiorama/Chefs` has exactly three children. |
 | `diorama.camera_current` | `MenuDiorama/Camera3D` exists and is the current camera. |
@@ -231,3 +242,39 @@ differs from `EXPECTED_CHECKS` (16 today).
 Solo and Quit are never actually pressed: Solo would `change_scene_to_file`
 into the kitchen and Quit would end the process, so the test only asserts
 they are connected.
+
+## Settings test
+
+`tests/settings_test.gd` is the `--script` launcher and
+`tests/settings_test_body.gd` holds the checks. It exercises the `Settings`
+autoload directly, with no scene: the autoload is on the tree before
+`_initialize`, so the body may name `Settings` as any game script does. The
+body first sets `Settings.config_path` to `user://settings_test.cfg`, deletes
+any stale copy and calls `reset_to_defaults()`, and deletes the temp file
+again at the end, so the developer's real `user://settings.cfg` is never
+touched. It exits `1` if any check fails or if the number of checks run
+differs from `EXPECTED_CHECKS` (10 today).
+
+```sh
+Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/settings_test.gd
+```
+
+| Check | What it asserts |
+|-------|-----------------|
+| `defaults.interact_e` | After `reset_to_defaults`, `key_for(&"interact")` is `KEY_E` (defaults are captured from the shipped `InputMap` in `_ready`). |
+| `defaults.walk_shift` | `key_for(&"walk")` is `KEY_SHIFT`. |
+| `bind.updates_settings` | `bind(&"interact", KEY_G)` makes `key_for` report `G`. |
+| `bind.updates_inputmap` | The `InputMap` events for `interact` now contain a physical `G` and no `E`. |
+| `bind.swaps_on_conflict` | `bind(&"throw", KEY_G)` gives throw `G` and hands interact throw's old `F`, so nothing is left unbound. |
+| `save.written` | The temp config exists and stores `controls/throw = KEY_G`. |
+| `save.sensitivity` | Assigning `mouse_sensitivity = 0.004` writes `mouse/sensitivity` (the setter saves). |
+| `reset.restores` | `reset_to_defaults` returns interact to `E`, throw to `F` and sensitivity to `DEFAULT_SENSITIVITY`. |
+| `load.applies` | A hand-written config (`interact = KEY_H`, `sensitivity = 0.001`) is applied to both `Settings` and the `InputMap` by `load_settings`. |
+| `load.ignores_unknown_action` | `pause` (Escape) is not in `Settings.REBINDABLE`. |
+
+Two engine quirks the autoload works around, both of which would otherwise
+print an `ERROR:` line per call headless: `DisplayServer.keyboard_get_keycode_from_physical`
+is unsupported by the headless display server (so `key_name` falls back to
+the physical key there), and `ConfigFile.get_value` treats an explicit `null`
+default as "no default given" (so `load_settings` tests `has_section_key`
+before reading).
