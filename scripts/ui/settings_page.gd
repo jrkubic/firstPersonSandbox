@@ -61,7 +61,7 @@ func _build() -> void:
 	var sensitivity_row := HBoxContainer.new()
 	add_child(sensitivity_row)
 	var sensitivity_label := Label.new()
-	sensitivity_label.text = "Mouse sensitivity"
+	sensitivity_label.text = "Look sensitivity"  # config key stays mouse/sensitivity
 	sensitivity_label.add_theme_font_size_override("font_size", 22)
 	sensitivity_row.add_child(sensitivity_label)
 	_slider = HSlider.new()

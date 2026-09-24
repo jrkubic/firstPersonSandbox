@@ -87,16 +87,18 @@ appears at its station.
 
 ### Settings
 
-Main menu > **Settings** lists every gameplay action with its current key.
-Click a key button, then press the new key (Escape cancels the listen). If
-another action already uses that key the two actions swap, so nothing is
-ever left unbound. The **Mouse sensitivity** slider applies immediately and
-**Reset to defaults** restores the shipped bindings (crouch keeps one key,
-Ctrl, after any change). Key changes and Reset are saved straight away, and
-the sensitivity when you release the slider or press Back, to
+Main menu > **Settings** (or, in game, Escape > **Settings**) lists every
+gameplay action with its current key. Click a key button, then press the new
+key (Escape cancels the listen). If another action already uses that key the
+two actions swap, so nothing is ever left unbound. The **Look sensitivity**
+slider applies immediately and **Reset to defaults** restores the shipped
+bindings (crouch keeps one key, Ctrl, after any change). Key changes and
+Reset are saved straight away, and the sensitivity when you release the
+slider or press Back, to
 `%APPDATA%\Godot\app_userdata\firstPersonSandbox\settings.cfg`; the file is
-applied again at boot and never rewritten by loading it. Escape itself cannot be rebound, so the menus can
-always be backed out of.
+applied again at boot and never rewritten by loading it. Escape itself cannot
+be rebound, so the menus can always be backed out of: in the Escape menu it
+steps from Settings back to the buttons, then resumes the game.
 
 ## Controls
 
@@ -109,7 +111,7 @@ always be backed out of.
 | Shift    | Walk (hold): 20% speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only) |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings |
 | F3       | Toggle debug overlay            |
 
 These are the defaults: every key above except Escape can be rebound from
@@ -159,7 +161,7 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 104 checks are:
+watchdog trips. The 107 checks are:
 
 - `boot.*` (5) — kitchen loads and is wired; exactly one egg, plate, pan and
   stove; egg `RAW`; pan on the stove; nothing held
@@ -202,6 +204,9 @@ watchdog trips. The 104 checks are:
 - `trash.*` (7) — a held egg in the bin survives; once released it is freed
   and its spawner refills; a binned pan and empty plate are replaced the
   same way (the pan back on the stove)
+- `pause_settings.*` (3) — Escape opens the pause menu on its buttons, its
+  Settings button swaps in the controls page, and Escape backs out to the
+  buttons before resuming (no rebinding, so `settings.cfg` is never written)
 
 Determinism notes, per-check details and how to add a check: `tests/README.md`.
 
@@ -369,7 +374,8 @@ number decides whether holder-owned physics is worth building.
   `sync/{player,egg,container,loop,orders,net}_sync.tres`
   (`MultiplayerSynchronizer` replication configs)
 - `scripts/` — `player.gd`, `menu.gd`, `settings.gd` (the `Settings`
-  autoload: one rebindable key per action and the mouse sensitivity, applied
+  autoload: one rebindable key per action and the look sensitivity
+  (`mouse_sensitivity`), applied
   to the `InputMap` and persisted to `user://settings.cfg`), `groups.gd`
   (node-group name constants), `items/{food_item,pan,plate}.gd`,
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,

@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 104
+const EXPECTED_CHECKS: int = 107
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -114,6 +114,7 @@ func _run() -> void:
 	await _check_occupied_slot(pan)
 	await _check_walk()
 	await _check_trash()
+	await _check_pause_settings()
 	_finish()
 
 
@@ -974,6 +975,33 @@ func _ensure_autoloads() -> void:
 		var node: Node = (load(entry[1]) as GDScript).new()
 		node.name = entry[0]
 		get_tree().root.add_child(node)
+
+
+## Escape menu reaches Settings and backs out one level at a time. The tree
+## is paused while the menu is open (offline), so waits use process frames.
+## Nothing here rebinds or saves, so the real settings.cfg is never written.
+func _check_pause_settings() -> void:
+	var pause_menu: CanvasLayer = _kitchen.get_node("PauseMenu") as CanvasLayer
+	var buttons: Control = pause_menu.get_node("%VBoxContainer") as Control
+	var page: Control = pause_menu.get_node("%SettingsPage") as Control
+	_press_action("pause")
+	for i in range(3):
+		await get_tree().process_frame
+	_check("pause_settings.menu_open", pause_menu.visible and buttons.visible and not page.visible,
+		"menu=%s buttons=%s page=%s" % [pause_menu.visible, buttons.visible, page.visible])
+	(pause_menu.get_node("%SettingsButton") as Button).pressed.emit()
+	await get_tree().process_frame
+	_check("pause_settings.page_opens", page.visible and not buttons.visible,
+		"page=%s buttons=%s" % [page.visible, buttons.visible])
+	_press_action("pause")
+	for i in range(3):
+		await get_tree().process_frame
+	_check("pause_settings.escape_backs_out", pause_menu.visible and buttons.visible and not page.visible,
+		"menu=%s buttons=%s page=%s" % [pause_menu.visible, buttons.visible, page.visible])
+	_press_action("pause")
+	for i in range(3):
+		await get_tree().process_frame
+	get_tree().paused = false
 
 
 ## Simulates a press of an InputMap action the same way a key press reaches
