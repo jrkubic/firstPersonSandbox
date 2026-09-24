@@ -28,6 +28,8 @@ extends CharacterBody3D
 ## Apron colour (index into ChefSkin.APRON_COLORS). Set by the spawner before
 ## the node enters the tree so every peer agrees.
 @export var skin_color_index: int = 0
+## Name tag text instead of the peer's synced name (the solo dummy is "Dummy").
+@export var display_name_override: String = ""
 
 @export_group("Walk")
 ## move_speed is multiplied by this while "walk" (Shift) is held (0.2 = 1.6 m/s). Meant for
@@ -52,6 +54,7 @@ var crouched: bool = false:
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var grab_controller: GrabController = $Head/Camera3D/GrabController
 @onready var skin: ChefSkin = $Skin
+@onready var name_tag: Label3D = $NameTag
 @onready var crosshair: CanvasLayer = $Crosshair
 
 var _standing_head_y: float = 0.0
@@ -94,9 +97,28 @@ func _ready() -> void:
 	skin.shadows_only = mine
 	skin.set_parts_visible(true)  # own body still casts its shadow
 	skin.visible = true
+	# Name tag above the hat on other players only; it follows the roster.
+	name_tag.visible = not mine
+	_refresh_name_tag()
+	NetSession.peers_changed.connect(_refresh_name_tag)
 	if mine:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		call_deferred("_register_debug_watches")
+
+
+func _exit_tree() -> void:
+	if NetSession.peers_changed.is_connected(_refresh_name_tag):
+		NetSession.peers_changed.disconnect(_refresh_name_tag)
+
+
+## The tag shows display_name_override when set, else the owning peer's synced
+## Steam name (or "Player <id>" until the roster arrives).
+func _refresh_name_tag() -> void:
+	var peer: int = get_multiplayer_authority()
+	if display_name_override != "":
+		name_tag.text = display_name_override
+	else:
+		name_tag.text = str(NetSession.peer_names.get(peer, "Player %d" % peer))
 
 
 func _unhandled_input(event: InputEvent) -> void:

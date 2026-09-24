@@ -129,6 +129,7 @@ func toggle_dummy() -> bool:
 	dummy.add_to_group(Groups.DUMMY)
 	dummy.set_multiplayer_authority(DUMMY_PEER)
 	dummy.skin_color_index = 1
+	dummy.display_name_override = DUMMY_NAME
 	var point: Vector3 = _spawn_point_for(1).global_position
 	dummy.position = Vector3(point.x, 0.0, point.z)
 	_players.add_child(dummy)

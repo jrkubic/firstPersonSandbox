@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 128
+const EXPECTED_CHECKS: int = 130
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -1103,6 +1103,8 @@ func _check_dummy() -> void:
 	if not _check("dummy.spawns", on and dummy != null, "toggle=%s node=%s" % [on, dummy != null]):
 		_check("dummy.looks_remote", false, "skipped")
 		_check("dummy.chef_parts", false, "skipped")
+		_check("dummy.name_tag", false, "skipped")
+		_check("boot.own_tag_hidden", false, "skipped")
 		_check("dummy.not_counted", false, "skipped")
 		_check("dummy.removes", false, "skipped")
 		return
@@ -1121,6 +1123,12 @@ func _check_dummy() -> void:
 		and skin.head.get_parent() == dummy.get_node("Head")
 		and skin.body.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON,
 		"skin=%s" % (skin != null))
+	# Name tag above the hat: shown on other players (the dummy is "Dummy"),
+	# never on your own chef.
+	var tag: Label3D = dummy.get_node_or_null("NameTag") as Label3D
+	_check("dummy.name_tag", tag != null and tag.visible and tag.text == "Dummy", "tag=%s" % (tag.text if tag else "<none>"))
+	var my_tag: Label3D = _player.get_node_or_null("NameTag") as Label3D
+	_check("boot.own_tag_hidden", my_tag != null and not my_tag.visible, "own tag visible")
 	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
 	# Solid bodies: players collide with each other (mask includes the Player
 	# layer), so walking into the dummy stops you instead of passing through.

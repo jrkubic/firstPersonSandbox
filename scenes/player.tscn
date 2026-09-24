@@ -20,6 +20,17 @@ shape = SubResource("CapsuleShape3D_player")
 [node name="Skin" type="Node3D" parent="." unique_id=123480217]
 script = ExtResource("3_chef_skin")
 
+[node name="NameTag" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.35, 0)
+visible = false
+pixel_size = 0.004
+billboard = 1
+no_depth_test = true
+fixed_size = false
+text = ""
+font_size = 56
+outline_size = 12
+
 [node name="Head" type="Node3D" parent="." unique_id=1189047595]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 

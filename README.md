@@ -87,6 +87,10 @@ appears at its station.
    overlay dialog. Guests accept from the overlay or their friends list and
    land in the same kitchen.
 3. Practice together. The HUD shows `Practice  Delivered: N` and `--:--`.
+   Other players appear as chefs (coloured apron, hat, head that turns with
+   their look) with a name tag above the hat showing their Steam name; your
+   own chef only casts a shadow. Solo, Escape > **Spawn dummy** adds a chef
+   named Dummy so you can see the look without a second player.
 4. When everyone is in, host presses Escape > **Start Run**. Everyone
    teleports to the door, items reset, the lobby locks and the HUD switches
    to `Delivered: N/3` with a timer.
@@ -120,7 +124,7 @@ steps from Settings back to the buttons, then resumes the game.
 | Shift    | Walk (hold): 20% speed for carrying plates |
 | E        | Grab / release held item        |
 | F        | Throw held item                 |
-| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings. Solo: Spawn dummy adds a stand-in player so you can see what others look like. |
+| Escape   | Pause menu (solo) / session menu with Invite and Start Run (online, host only); both have Settings. Solo: Spawn dummy adds a stand-in chef named Dummy so you can see what other players look like. |
 | F3       | Toggle debug overlay            |
 
 These are the defaults: every key above except Escape can be rebound from
@@ -170,10 +174,11 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 121 checks are:
+watchdog trips. The 130 checks are:
 
-- `boot.*` (6) — kitchen loads and is wired; exactly one egg, bread, plate,
-  pan and stove; egg `RAW`; pan on the stove; nothing held; the ticket is
+- `boot.*` (8) — kitchen loads and is wired; exactly one egg, bread, plate,
+  pan and stove; egg `RAW`; pan on the stove; nothing held; your own chef
+  skin is shadows-only and your own name tag hidden; the ticket is
   recipe 0, `1× Fried Egg`
 - `cook.*` (5) — `RAW` to `COOKING` to `COOKED` at one 1/60 s tick per physics
   frame; a loose egg stays inside the rimmed pan
@@ -221,9 +226,14 @@ watchdog trips. The 121 checks are:
 - `trash.*` (7) — a held egg in the bin survives; once released it is freed
   and its spawner refills; a binned pan and empty plate are replaced the
   same way (the pan back on the stove)
-- `pause_settings.*` (3), `dummy.*` (5) — Escape opens the pause menu on its buttons, its
+- `pause_settings.*` (3) — Escape opens the pause menu on its buttons, its
   Settings button swaps in the controls page, and Escape backs out to the
   buttons before resuming (no rebinding, so `settings.cfg` is never written)
+- `dummy.*` (7) — the solo dummy spawns as a remote-looking chef (visible
+  skin, camera off, no authority; body under `Skin`, head and hat under the
+  player's `Head`, rendering rather than shadows-only) with a name tag reading
+  `Dummy`; it is not counted as a player, blocks you when you walk into it,
+  and is gone the same frame it is toggled off
 
 Determinism notes, per-check details and how to add a check: `tests/README.md`.
 
@@ -242,7 +252,7 @@ powershell -ExecutionPolicy Bypass -File tests/run_net_test.ps1
 The script prints the merged `PASS` / `FAIL` / `SUMMARY` lines of both halves
 (stdout goes to `%TEMP%\net_test_host.log` and `net_test_client.log`, Godot's
 stderr to the matching `.err.log` files) and ends with `NET TEST PASSED` or
-`NET TEST FAILED`. The 37 checks split into 12 `host.*` and 25 `client.*`:
+`NET TEST FAILED`. The 38 checks split into 12 `host.*` and 26 `client.*`:
 the host follows a scripted timeline (listen, hold the plate before the client
 joins, switch the ticket to Egg on Toast once the client is in, cook the egg,
 park it on the counter, wait for the client's grab and release, switch the
@@ -252,7 +262,8 @@ authority and the host's without, the egg frozen and parented under `Items`,
 `cook_progress`, state and position arriving, the plate reported `held_by`
 the host on late join, a grab on that plate rejected as `TAKEN`, its own grab
 and release round-tripping through the RPCs, names and practice mode on
-join, the ticket index and the order board text, the delivery count, the
+join, the host's name tag showing the synced name, the ticket index and the
+order board text, the delivery count, the
 mode switch, the teleport on run start and the timer ticking. Per-check table: `tests/README.md`.
 
 ### Menu test
@@ -354,7 +365,8 @@ so step 4 also works from a cold start.
 3. Host presses Escape > **Invite friends**; Steam overlay invite dialog
    opens; invite the second account.
 4. Guest accepts the invite (overlay or Steam friends list). Guest's kitchen
-   loads; both panels list both names; guest sees the host's capsule, the
+   loads; both panels list both names; guest sees the host's chef with the
+   host's name above its hat (and where the host is looking), the
    egg, pan and plate. F3 on the guest shows `net.role: CLIENT`.
 5. Guest picks up the egg (E). Host sees it lift. Guest drops it in the pan;
    both see it cook (colour shift), F3 `egg.state` agrees on both.
@@ -405,9 +417,12 @@ number decides whether holder-owned physics is worth building.
   `net/{net_session,steam_manager,net_body}.gd` (session/peer autoload,
   Steam autoload, per-item replication and smoothing),
   `systems/{grab_controller,stove_detector,cook_slot,food_container,order_system,delivery_zone,trash_zone,item_spawner,kitchen_loop,kitchen_net}.gd`,
-  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama,settings_page}.gd`
-  (`menu_diorama.gd` builds the menu's flat-shaded kitchen and three tweened
-  capsule chefs from primitives in `_ready`; no art assets.
+  `ui/{debug_overlay,order_board,hud,pause_menu,end_screen,score_popup,lobby_panel,menu_diorama,chef_skin,settings_page}.gd`
+  (`chef_skin.gd` builds a chef from primitives: apron-coloured body and
+  hands, plus head, brim and hat under a head anchor; `player.tscn` uses it
+  for other players and the dummy, with the head parts under the player's
+  `Head`. `menu_diorama.gd` builds the menu's flat-shaded kitchen and three
+  tweened `ChefSkin` chefs in `_ready`; no art assets.
   `settings_page.gd` builds the menu's Controls page in code: one row per
   rebindable action, the sensitivity slider, Reset and Back)
 - `scene.gltf`, `scene.bin`, `textures/` — the old Sketchfab menu background.

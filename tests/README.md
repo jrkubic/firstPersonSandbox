@@ -187,6 +187,7 @@ The client, in order:
 | `client.release_rpc` | `request_release` clears `is_holding()` and `held_by` goes back to `NOBODY` within 5 s. |
 | `client.practice_mode_on_join` | `KitchenNet.mode` is `PRACTICE` (came through the full-state RPC on join). |
 | `client.names_synced` | `NetSession.peer_names` has entries for peer 1 and for us. |
+| `client.host_name_tag` | The host's player node's `NameTag` (a `Label3D`) is visible and, within 5 s, reads `peer_names[1]`. |
 | `client.delivery_syncs` | `deliveries_made == 1` after the host's delivery. |
 | `client.mode_syncs` | Mode flips to `RUN` after the host's `start_run()`. |
 | `client.teleport_rpc` | Our player is within 0.5 m of `SpawnPoint1` — the owning-peer teleport RPC moved a body we have authority over. |

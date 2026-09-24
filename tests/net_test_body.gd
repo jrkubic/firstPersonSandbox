@@ -14,7 +14,7 @@ extends Node
 const KITCHEN_SCENE: String = "res://scenes/kitchen.tscn"
 const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 120.0
-const EXPECTED_CHECKS: Dictionary = {"host": 12, "client": 25}
+const EXPECTED_CHECKS: Dictionary = {"host": 12, "client": 26}
 
 # Kitchen geometry, see scenes/kitchen.tscn and tests/smoke_test.gd.
 const STOVE_PAN_POS: Vector3 = Vector3(0.0, 1.0605681, 0.0)
@@ -237,6 +237,12 @@ func _run_client() -> void:
 		"mode=%d" % _net.mode)
 	_check("client.names_synced", NetSession.peer_names.has(1) and NetSession.peer_names.has(me),
 		"names=%s" % str(NetSession.peer_names))
+	# The host's chef carries a name tag reading the host's synced name.
+	var host_tag: Label3D = _net.get_player(1).get_node_or_null("NameTag") as Label3D
+	var tag_synced: int = await _wait_until(
+		func() -> bool: return host_tag != null and host_tag.text == str(NetSession.peer_names.get(1, "")) and host_tag.text != "", PHYSICS_TPS * 5)
+	_check("client.host_name_tag", tag_synced >= 0 and host_tag.visible,
+		"tag=%s names=%s" % [host_tag.text if host_tag else "<none>", str(NetSession.peer_names)])
 	var delivered: int = await _wait_until(
 		func() -> bool: return _loop.deliveries_made == 1, PHYSICS_TPS * 20)
 	_check("client.delivery_syncs", delivered >= 0, "deliveries_made=%d" % _loop.deliveries_made)
