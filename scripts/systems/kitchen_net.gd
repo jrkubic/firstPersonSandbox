@@ -79,7 +79,8 @@ func is_practice() -> bool:
 ## replicates it to every peer.
 func spawn_player(peer_id: int) -> Player:
 	var point: Node3D = _free_spawn_point()
-	return _player_spawner.spawn([peer_id, point.global_position]) as Player
+	return _player_spawner.spawn([peer_id, point.global_position,
+		player_count() % ChefSkin.APRON_COLORS.size()]) as Player
 
 
 ## Players still in the kitchen; the solo dummy is never one of them (it is
@@ -127,6 +128,7 @@ func toggle_dummy() -> bool:
 	dummy.name = DUMMY_NAME
 	dummy.add_to_group(Groups.DUMMY)
 	dummy.set_multiplayer_authority(DUMMY_PEER)
+	dummy.skin_color_index = 1
 	var point: Vector3 = _spawn_point_for(1).global_position
 	dummy.position = Vector3(point.x, 0.0, point.z)
 	_players.add_child(dummy)
@@ -168,6 +170,7 @@ func _spawn_player_node(data: Variant) -> Node:
 	var player: Player = PLAYER_SCENE.instantiate() as Player
 	player.name = str(data[0])
 	player.position = data[1]
+	player.skin_color_index = data[2] if data.size() > 2 else 0
 	return player
 
 

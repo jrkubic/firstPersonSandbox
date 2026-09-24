@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 126
+const EXPECTED_CHECKS: int = 128
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -206,6 +206,10 @@ func _check_boot() -> bool:
 		"state=%s progress=%.2f" % [egg.state_name(), egg.cook_progress])
 	_check("boot.pan_on_stove", pan.is_on_stove(), "pan.is_on_stove() == false")
 	_check("boot.not_holding", not _grab.is_holding(), "held=%s" % _grab.held_body_name())
+	var my_skin: ChefSkin = _player.get_node_or_null("Skin") as ChefSkin
+	_check("boot.own_skin_shadows_only", my_skin != null and my_skin.shadows_only
+		and my_skin.body.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY,
+		"skin=%s" % (my_skin != null))
 	_check("boot.order_fried_egg",
 		_order_system.current_index == 0 and _order_system.current_order_text() == "1× Fried Egg",
 		"index=%d text=%s" % [_order_system.current_index, _order_system.current_order_text()])
@@ -1098,18 +1102,25 @@ func _check_dummy() -> void:
 	var dummy: Player = _kitchen.get_node_or_null("Players/Dummy") as Player
 	if not _check("dummy.spawns", on and dummy != null, "toggle=%s node=%s" % [on, dummy != null]):
 		_check("dummy.looks_remote", false, "skipped")
+		_check("dummy.chef_parts", false, "skipped")
 		_check("dummy.not_counted", false, "skipped")
 		_check("dummy.removes", false, "skipped")
 		return
 	var camera: Camera3D = dummy.get_node("Head/Camera3D") as Camera3D
-	var skin: MeshInstance3D = dummy.get_node("Skin") as MeshInstance3D
-	# The scene ships the skin shadows-only (for your own body); a remote copy
-	# must render, or other players are invisible.
+	var skin: ChefSkin = dummy.get_node("Skin") as ChefSkin
+	# Your own body is shadows-only; a remote copy must render, or other
+	# players are invisible.
 	_check("dummy.looks_remote",
-		not dummy.is_multiplayer_authority() and skin.visible and not camera.current
-		and skin.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON,
-		"authority=%s skin=%s cast_shadow=%d camera=%s" % [dummy.is_multiplayer_authority(),
-			skin.visible, skin.cast_shadow, camera.current])
+		not dummy.is_multiplayer_authority() and skin != null and skin.visible and not camera.current
+		and not skin.shadows_only,
+		"authority=%s skin=%s camera=%s" % [dummy.is_multiplayer_authority(), skin != null, camera.current])
+	# Chef parts: body under the skin, head + hat under the player's Head so
+	# they pitch with the look direction.
+	_check("dummy.chef_parts",
+		skin != null and skin.body != null and skin.head != null and skin.hat != null
+		and skin.head.get_parent() == dummy.get_node("Head")
+		and skin.body.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_ON,
+		"skin=%s" % (skin != null))
 	_check("dummy.not_counted", _net.player_count() == 1, "player_count=%d" % _net.player_count())
 	# Solid bodies: players collide with each other (mask includes the Player
 	# layer), so walking into the dummy stops you instead of passing through.

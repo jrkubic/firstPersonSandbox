@@ -1,8 +1,8 @@
 extends Node3D
-## Title-screen diorama: a flat-shaded kitchen with three capsule chefs who
-## loop between stations (stove, counter with egg crate, pass window). Built
-## entirely from primitives in _ready so it needs no assets and matches the
-## grey-box game. The camera sways gently in front of the set, which sits in
+## Title-screen diorama: a flat-shaded kitchen with three chefs (ChefSkin, the
+## same look other players have in the kitchen) who loop between stations
+## (stove, counter with egg crate, pass window). Built entirely from
+## primitives in _ready so it needs no assets and matches the grey-box game. The camera sways gently in front of the set, which sits in
 ## the right ~60% of the frame so the menu column on the left stays clear.
 
 const FLOOR_COLOR := Color(0.58, 0.50, 0.42)
@@ -11,12 +11,13 @@ const COUNTER_COLOR := Color(0.55, 0.42, 0.32)
 const STOVE_COLOR := Color(0.25, 0.26, 0.30)
 const BURNER_COLOR := Color(1.0, 0.45, 0.15)
 const PASS_COLOR := Color(0.75, 0.62, 0.45)
-const SKIN_COLOR := Color(0.96, 0.80, 0.66)
-const HAT_COLOR := Color(0.98, 0.98, 0.96)
 const EGG_COLOR := Color(1.0, 0.98, 0.92)
 const PLATE_COLOR := Color(0.95, 0.95, 0.97)
 const PAN_COLOR := Color(0.18, 0.18, 0.2)
-const APRON_COLORS: Array[Color] = [Color(0.85, 0.25, 0.2), Color(0.2, 0.45, 0.85), Color(0.25, 0.7, 0.35)]
+## Eye height of the diorama's chefs: the full-size ChefSkin is scaled down
+## uniformly to this (head at 1.15) so they keep their pre-ChefSkin size on
+## the small set while sharing the players' exact proportions.
+const CHEF_EYE_HEIGHT := 1.15
 
 const STOVE_POS := Vector3(-1.2, 0.0, -1.4)
 const COUNTER_POS := Vector3(2.0, 0.0, -1.4)
@@ -122,18 +123,18 @@ func _build_chefs() -> void:
 	var middle: Vector3 = Vector3(0.6, 0.0, 0.4)
 
 	# Chef 0 works the stove: bobs in place and flips the pan.
-	var cook: Node3D = _make_chef(APRON_COLORS[0], stove_side, Vector3(0.0, 0.0, -1.0))
+	var cook: Node3D = _make_chef(0, stove_side, Vector3(0.0, 0.0, -1.0))
 	_loop_bob(cook, 0.9)
 
 	# Chef 1 runs plates from the counter to the pass and back.
-	var runner: Node3D = _make_chef(APRON_COLORS[1], counter_side, Vector3(-1.0, 0.0, 0.0))
+	var runner: Node3D = _make_chef(1, counter_side, Vector3(-1.0, 0.0, 0.0))
 	var carried_plate: Node3D = _cylinder(Vector3.ZERO, 0.2, 0.03, PLATE_COLOR)
 	carried_plate.reparent(runner)
 	carried_plate.position = Vector3(0.0, 0.85, -0.35)
 	_loop_path(runner, [counter_side, middle, pass_side, middle], [1.1, 0.9, 1.3, 0.9], 0.35)
 
 	# Chef 2 ferries eggs from the crate to the stove.
-	var fetcher: Node3D = _make_chef(APRON_COLORS[2], middle + Vector3(1.2, 0.0, 0.6), Vector3(0.0, 0.0, -1.0))
+	var fetcher: Node3D = _make_chef(2, middle + Vector3(1.2, 0.0, 0.6), Vector3(0.0, 0.0, -1.0))
 	var carried_egg: Node3D = _sphere(Vector3.ZERO, 0.08, EGG_COLOR)
 	carried_egg.reparent(fetcher)
 	carried_egg.position = Vector3(0.2, 0.8, -0.35)
@@ -143,23 +144,19 @@ func _build_chefs() -> void:
 		[1.4, 1.4, 0.0], 0.4)
 
 
-## A chef: apron-coloured capsule body, skin sphere head, tall white hat with
-## a brim, two hand spheres. Faces `facing` (a horizontal direction).
-func _make_chef(apron: Color, at: Vector3, facing: Vector3) -> Node3D:
+## A chef: a ChefSkin (the same look as other players in the kitchen) with
+## apron colour `color_index`, scaled down to CHEF_EYE_HEIGHT. Faces
+## `facing` (a horizontal direction).
+func _make_chef(color_index: int, at: Vector3, facing: Vector3) -> Node3D:
 	var chef := Node3D.new()
 	chef.position = at
 	_chefs_root.add_child(chef)
-	var body := _capsule(Vector3(0.0, 0.35, 0.0), 0.19, 0.7, apron)  # bottom on the floor
-	body.reparent(chef, false)
-	var head := _sphere(Vector3(0.0, 0.9, 0.0), 0.15, SKIN_COLOR)
-	head.reparent(chef, false)
-	var hat := _cylinder(Vector3(0.0, 1.18, 0.0), 0.12, 0.3, HAT_COLOR)
-	hat.reparent(chef, false)
-	var brim := _cylinder(Vector3(0.0, 1.04, 0.0), 0.17, 0.05, HAT_COLOR)
-	brim.reparent(chef, false)
-	for side: float in [-1.0, 1.0]:
-		var hand := _sphere(Vector3(0.22 * side, 0.68, -0.12), 0.06, SKIN_COLOR)
-		hand.reparent(chef, false)
+	var skin := ChefSkin.new()
+	skin.name = "Skin"
+	skin.color_index = color_index
+	skin.scale = Vector3.ONE * (CHEF_EYE_HEIGHT / skin.eye_height)
+	chef.add_child(skin)
+	skin.build()
 	if facing.length() > 0.0:
 		chef.look_at(at + facing, Vector3.UP)
 	return chef
@@ -276,14 +273,6 @@ func _sphere(at: Vector3, radius: float, color: Color) -> MeshInstance3D:
 	var mesh := SphereMesh.new()
 	mesh.radius = radius
 	mesh.height = radius * 2.0
-	mesh.material = _material(color)
-	return _place(mesh, at)
-
-
-func _capsule(at: Vector3, radius: float, height: float, color: Color) -> MeshInstance3D:
-	var mesh := CapsuleMesh.new()
-	mesh.radius = radius
-	mesh.height = height
 	mesh.material = _material(color)
 	return _place(mesh, at)
 

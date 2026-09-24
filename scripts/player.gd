@@ -24,6 +24,11 @@ extends CharacterBody3D
 ## Total CapsuleShape3D height while crouched (standing height comes from the scene).
 @export var crouch_capsule_height := 1.3
 
+@export_group("Look")
+## Apron colour (index into ChefSkin.APRON_COLORS). Set by the spawner before
+## the node enters the tree so every peer agrees.
+@export var skin_color_index: int = 0
+
 @export_group("Walk")
 ## move_speed is multiplied by this while "walk" (Shift) is held (0.2 = 1.6 m/s). Meant for
 ## carrying plates without launching what's on them.
@@ -46,7 +51,7 @@ var crouched: bool = false:
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var grab_controller: GrabController = $Head/Camera3D/GrabController
-@onready var skin: MeshInstance3D = $Skin
+@onready var skin: ChefSkin = $Skin
 @onready var crosshair: CanvasLayer = $Crosshair
 
 var _standing_head_y: float = 0.0
@@ -81,11 +86,14 @@ func _ready() -> void:
 	var mine: bool = is_multiplayer_authority()
 	camera.current = mine
 	crosshair.visible = mine
-	skin.visible = not mine
-	# The scene ships the skin as shadows-only so your own body never blocks the
+	# Chef body under Skin, head and hat under Head (so they follow the synced
+	# look). Your own parts are shadows-only so nothing draws in front of the
 	# camera; other players' bodies must actually render.
-	if not mine:
-		skin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	skin.color_index = skin_color_index
+	skin.build(head)
+	skin.shadows_only = mine
+	skin.set_parts_visible(true)  # own body still casts its shadow
+	skin.visible = true
 	if mine:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		call_deferred("_register_debug_watches")
