@@ -74,7 +74,7 @@ layout_mode = 2
 size_flags_horizontal = 0
 theme_override_fonts/font = SubResource("FontVariation_vjb58")
 theme_override_font_sizes/font_size = 62
-text = "Jakes 3D Game"
+text = "Good Chef"
 horizontal_alignment = 1
 
 [node name="Spacer" type="MarginContainer" parent="Control/MarginContainer/VBoxContainer"]

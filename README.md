@@ -1,4 +1,4 @@
-# firstPersonSandbox
+# Good Chef (firstPersonSandbox)
 
 A PEAK-style first-person cooking sandbox built on Godot 4.7. Contains a
 vertical slice where players cook a fried egg and deliver it to the pass, solo

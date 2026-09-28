@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="firstPersonSandbox"
+config/name="Good Chef"
 run/main_scene="uid://bikm81cso2up2"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
