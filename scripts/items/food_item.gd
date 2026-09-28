@@ -20,6 +20,15 @@ var last_state_change_msec: int = 0
 # Number of FoodContainers (plates) this food currently rests in. Maintained
 # by FoodContainer on enter/exit; never negative. See is_contained().
 var containers: int = 0
+## Path of the plate this food is attached to, or empty. Written by the
+## authority when the food comes to rest on a plate; replicated on change
+## (egg_sync.tres) so clients redirect grabs to the plate. Plated is final:
+## it only clears when the plate is freed.
+var plated_on: NodePath = NodePath()
+
+# Authority-side attachment state.
+var _plate: RigidBody3D = null
+var _plate_offset: Transform3D = Transform3D.IDENTITY
 
 @onready var mesh: MeshInstance3D = $MeshInstance3D
 var _material: StandardMaterial3D
@@ -45,6 +54,44 @@ func _process(_delta: float) -> void:
 	if not NetSession.is_authority() and cook_progress != _painted_progress:
 		_update_color()
 		_painted_progress = cook_progress
+
+
+func _physics_process(_delta: float) -> void:
+	if not NetSession.is_authority() or not is_plated():
+		return
+	if not is_instance_valid(_plate) or _plate.is_queued_for_deletion():
+		_detach()
+		return
+	global_transform = _plate.global_transform * _plate_offset
+
+
+func is_plated() -> bool:
+	return not plated_on.is_empty()
+
+
+## Authority only. Freezes this food and pins it to the plate at its current
+## offset; from now on it moves only with the plate.
+func attach_to_plate(plate: RigidBody3D) -> void:
+	if is_plated() or plate == null:
+		return
+	_plate = plate
+	_plate_offset = plate.global_transform.affine_inverse() * global_transform
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	freeze = true
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	add_collision_exception_with(plate)
+	plated_on = plate.get_path()
+
+
+## Safety net: the plate vanished without freeing this food (should not
+## happen; delivery, trash and reset free both). Back to a free rigid body.
+func _detach() -> void:
+	if is_instance_valid(_plate):
+		remove_collision_exception_with(_plate)
+	_plate = null
+	plated_on = NodePath()
+	freeze = false
 
 
 func tick_cook(delta: float) -> void:

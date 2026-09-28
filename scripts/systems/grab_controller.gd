@@ -29,7 +29,7 @@ extends Node3D
 ## Radius of the assist sphere in metres. Larger is more forgiving.
 @export var grab_assist_radius: float = 0.12
 
-enum Reject { NONE, TAKEN, OUT_OF_REACH, NOT_GRABBABLE }
+enum Reject { NONE, TAKEN, OUT_OF_REACH, NOT_GRABBABLE, PLATED }
 
 ## Spacing of the assist sphere samples along the aim line, in metres.
 const GRAB_ASSIST_STEP: float = 0.25
@@ -154,6 +154,8 @@ func force_release() -> void:
 func _validate_grab(body: RigidBody3D) -> Reject:
 	if body == null or not body.is_in_group(Groups.GRABBABLE):
 		return Reject.NOT_GRABBABLE
+	if body is FoodItem and (body as FoodItem).is_plated():
+		return Reject.PLATED
 	var net: NetBody = NetBody.of(body)
 	if net != null and net.held_by != NetBody.NOBODY:
 		return Reject.TAKEN
@@ -279,7 +281,7 @@ func _find_ray_candidate() -> RigidBody3D:
 	var collider := hit["collider"] as RigidBody3D
 	if collider == null or not collider.is_in_group(Groups.GRABBABLE):
 		return null
-	return collider
+	return _redirect_plated(collider)
 
 
 ## Forgiving attempt: overlap a sphere of grab_assist_radius at sample
@@ -316,9 +318,18 @@ func _find_assist_candidate() -> RigidBody3D:
 				best = body
 				best_offset = offset
 		if best != null:
-			return best
+			return _redirect_plated(best)
 		distance += GRAB_ASSIST_STEP
 	return null
+
+
+## Plated food is part of its plate: aiming at it grabs the plate.
+func _redirect_plated(body: RigidBody3D) -> RigidBody3D:
+	if body is FoodItem and (body as FoodItem).is_plated():
+		var plate: RigidBody3D = body.get_node_or_null((body as FoodItem).plated_on) as RigidBody3D
+		if plate != null and plate.is_in_group(Groups.GRABBABLE):
+			return plate
+	return body
 
 
 ## True when a ray from `from` to the body's origin reaches it without

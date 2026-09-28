@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 130
+const EXPECTED_CHECKS: int = 137
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -124,6 +124,7 @@ func _run() -> void:
 	await _check_toast()
 	await _check_walk()
 	await _check_trash()
+	await _check_plating()
 	await _check_dummy()
 	await _check_pause_settings()
 	_finish()
@@ -557,19 +558,30 @@ func _check_plate_on_pan(pan: Pan) -> void:
 	# Proves the freeze came from is_contained(), not from the egg escaping.
 	_check("plate_on_pan.still_overlapping", slot.has_food(egg) and plate.get_contents().has(egg),
 		"in_slot=%s plated=%s dist=%.2f" % [slot.has_food(egg), plate.get_contents().has(egg), _horizontal_distance(egg, pan)])
-	# Lifting the egg off the plate hands it back to the stove: progress resumes.
+	# Plated is final: moving the plate carries the egg, and the egg cannot be
+	# lifted off. The plate is moved to the counter first (a cooked plated egg
+	# set straight on the Pass delivers within a few frames, freeing both
+	# before they can be inspected), then ends up in the delivery zone, so it
+	# delivers and the kitchen respawns a free egg for the next checks.
+	_teleport(plate, COUNTER_PAN_POS + Vector3(0.0, 0.05, 0.4))
+	await _step(15)
+	_check("plate_on_pan.rides_with_plate",
+		egg.is_plated() and plate.get_contents().has(egg) and _horizontal_distance(egg, plate) < 0.2,
+		"plated=%s dist=%.2f contents=%s" % [egg.is_plated(), _horizontal_distance(egg, plate), plate.container.contents_text()])
+	_teleport(egg, pan.global_position + EGG_IN_PAN_OFFSET)  # try to lift it off
+	await _step(5)
+	_check("plate_on_pan.stays_plated", egg.is_plated() and _horizontal_distance(egg, plate) < 0.2,
+		"plated=%s egg %.2f m from the plate" % [egg.is_plated(), _horizontal_distance(egg, plate)])
 	_teleport(plate, PASS_PLATE_POS)
-	_teleport(egg, pan.global_position + EGG_IN_PAN_OFFSET)
-	await _step(10)
-	_check("plate_on_pan.released", not egg.is_contained(), "containers=%d" % egg.containers)
-	var resumed_from: float = egg.cook_progress
+	var before_delivery: int = _delivered_count
+	var fired: int = await _wait_until(func() -> bool: return _delivered_count > before_delivery, 60)
+	_check("plate_on_pan.delivers", fired >= 0, "plate with a cooked egg did not deliver")
 	await _step(30)
-	_check("plate_on_pan.progress_resumes", egg.cook_progress > resumed_from + 0.05,
-		"progress %.3f -> %.3f after unplating" % [resumed_from, egg.cook_progress])
 
 
-## 11. Carrying the pan: the egg left in the pan by check 10 should ride along
-## inside the rim while the GrabController pulls the pan to the hold target.
+## 11. Carrying the pan: the egg (respawned after check 10 delivered its
+## plate) is dropped into the pan and should ride along inside the rim while
+## the GrabController pulls the pan to the hold target.
 ## KNOWN BUG (expected failure): GrabController sets the pan's linear and
 ## angular velocity instantly (up to 20 m/s and 20 rad/s) the frame it is
 ## grabbed, so the disc and rim hit the resting egg like a bat and it is
@@ -780,8 +792,13 @@ func _check_held_egg(pan: Pan) -> void:
 	_loop.delivery_goal = 10
 	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
 	var egg: FoodItem = _first_food()
+	# Plated is final: check 10 delivered its cooked egg with the plate, so the
+	# egg here is the RAW respawn and has to be cooked first.
+	var cooked: bool = egg != null and egg.state == FoodItem.State.COOKED
+	if egg != null and not cooked:
+		cooked = await _cook_until_cooked(egg, pan)
 	if not _check("held_egg.setup", plate != null and egg != null and not _grab.is_holding()
-			and egg.state == FoodItem.State.COOKED,
+			and cooked,
 			"plate=%s egg=%s state=%s" % [plate, egg, egg.state_name() if egg else "-"]):
 		return
 	_teleport(plate, PASS_PLATE_POS)
@@ -796,7 +813,7 @@ func _check_held_egg(pan: Pan) -> void:
 	var fired: int = await _wait_until(func() -> bool: return _delivered_count > before, 30)
 	_check("held_egg.delivers_after_release", fired >= 0, "no delivery after releasing the egg")
 	await _step(5)
-	_check("held_egg.count", _loop.deliveries_made == 3, "deliveries_made=%d" % _loop.deliveries_made)
+	_check("held_egg.count", _loop.deliveries_made == 4, "deliveries_made=%d" % _loop.deliveries_made)
 	await _step(5)
 
 
@@ -982,6 +999,53 @@ func _check_trash() -> void:
 		plate_freed >= 0 and get_tree().get_nodes_in_group("plate").size() == 1
 		and not _plate_spawner.is_slot_free(),
 		"freed=%s plates=%d" % [plate_freed >= 0, get_tree().get_nodes_in_group("plate").size()])
+
+
+## Plated is final: food at rest on a plate attaches, aiming at it grabs the
+## plate, the host refuses a direct grab of plated food, the food rides with
+## the plate, and binning the plate bins and replaces the food too.
+func _check_plating() -> void:
+	var plate: Plate = get_tree().get_first_node_in_group("plate") as Plate
+	var egg: FoodItem = _first_food()
+	if not _check("plating.setup", plate != null and egg != null and not _grab.is_holding()
+			and not egg.is_plated(), "plate=%s egg=%s" % [plate != null, egg != null]):
+		return
+	# Plate on the counter, egg dropped onto it.
+	_teleport(plate, COUNTER_PAN_POS + Vector3(0.0, 0.05, 0.4))
+	await _step(10)
+	_teleport(egg, plate.global_position + EGG_ON_PLATE_OFFSET)
+	var attached: int = await _wait_until(func() -> bool: return egg.is_plated(), 40)
+	_check("plating.attaches", attached >= 0 and egg.plated_on == plate.get_path() and egg.freeze,
+		"plated=%s on=%s freeze=%s" % [egg.is_plated(), str(egg.plated_on), egg.freeze])
+	# Direct request for the plated egg is refused; nothing is held.
+	_grab.request_grab(egg.get_path())
+	await _step(3)
+	_check("plating.direct_grab_refused",
+		not _grab.is_holding() and _grab.last_reject == GrabController.Reject.PLATED,
+		"holding=%s reject=%d" % [_grab.is_holding(), _grab.last_reject])
+	# Aiming at the plated egg grabs the plate.
+	var forward: Vector3 = -_camera.global_transform.basis.z
+	var in_front: Vector3 = _camera.global_position + forward * 1.0
+	_teleport(plate, in_front - Vector3(0.0, 0.09, 0.0))
+	await _step(10)
+	_press_action("interact")
+	var held: int = await _wait_until(func() -> bool: return _grab.is_holding(), 5)
+	_check("plating.aim_grabs_plate", held >= 0 and _grab.held_body_name() == plate.name,
+		"held=%s expected=%s" % [_grab.held_body_name(), plate.name])
+	_check("plating.rides_in_hand", egg.is_plated() and _horizontal_distance(egg, plate) < 0.2,
+		"plated=%s dist=%.2f" % [egg.is_plated(), _horizontal_distance(egg, plate)])
+	_press_action("interact")
+	await _step(5)
+	# Bin the plate: the egg goes with it and both stations refill.
+	_teleport(plate, TRASH_ZONE_POS)
+	var plate_ref: WeakRef = weakref(plate)
+	var egg_ref: WeakRef = weakref(egg)
+	var both_gone: int = await _wait_until(
+		func() -> bool: return plate_ref.get_ref() == null and egg_ref.get_ref() == null, 40)
+	await _step(5)
+	_check("plating.trash_takes_both",
+		both_gone >= 0 and get_tree().get_nodes_in_group("plate").size() == 1 and _foods_tagged("egg").size() == 1,
+		"gone=%s plates=%d eggs=%d" % [both_gone >= 0, get_tree().get_nodes_in_group("plate").size(), _foods_tagged("egg").size()])
 
 
 # ---------------------------------------------------------------------------

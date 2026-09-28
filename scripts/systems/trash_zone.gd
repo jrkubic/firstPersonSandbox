@@ -39,9 +39,17 @@ func _on_body_exited(body: Node) -> void:
 
 func _bin(body: RigidBody3D) -> void:
 	_inside.erase(body)
+	if body.is_queued_for_deletion():
+		return
 	var spawner_path: NodePath = body.get_meta(&"spawner_path", NodePath()) as NodePath
 	var spawner: ItemSpawner = get_node_or_null(spawner_path) as ItemSpawner if not spawner_path.is_empty() else null
 	trashed.emit(body.name)
+	# Plated is final: food attached to a binned plate goes with it, and each
+	# item's own spawner replaces it.
+	if body is Plate:
+		for food in (body as Plate).get_contents():
+			if is_instance_valid(food) and food.is_plated():
+				_bin(food)
 	body.queue_free()
 	if spawner != null:
 		spawner.replace(body)
