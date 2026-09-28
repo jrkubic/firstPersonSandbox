@@ -177,7 +177,7 @@ needed. Run it with the Godot **console** build (`<Godot console exe>` is e.g.
 
 It prints one `PASS` / `FAIL` / `XFAIL` line per check and a `SUMMARY` line,
 takes about 25 s, and exits non-zero (`1`) if any check fails or the 180 s
-watchdog trips. The 137 checks are:
+watchdog trips. The 138 checks are:
 
 - `boot.*` (8) — kitchen loads and is wired; exactly one egg, bread, plate,
   pan and stove; egg `RAW`; pan on the stove; nothing held; your own chef
@@ -230,10 +230,11 @@ watchdog trips. The 137 checks are:
 - `trash.*` (7) — a held egg in the bin survives; once released it is freed
   and its spawner refills; a binned pan and empty plate are replaced the
   same way (the pan back on the stove)
-- `plating.*` (6) — plated is final: an egg at rest on a plate attaches
+- `plating.*` (7) — plated is final: an egg at rest on a plate attaches
   (`plated_on`, frozen), a direct grab of it is refused with `Reject.PLATED`,
-  aiming at it grabs the plate, the egg rides in hand with the plate, and
-  binning the plate bins the egg too with both stations refilling
+  aiming at it grabs the plate, the egg rides in hand within 5 cm of the
+  plate and stays in its container while carried, and binning the plate bins
+  the egg too with both stations refilling
 - `pause_settings.*` (3) — Escape opens the pause menu on its buttons, its
   Settings button swaps in the controls page, and Escape backs out to the
   buttons before resuming (no rebinding, so `settings.cfg` is never written)

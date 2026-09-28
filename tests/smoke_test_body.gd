@@ -21,7 +21,7 @@ const PHYSICS_TPS: int = 60
 const WATCHDOG_SECONDS: float = 180.0
 # Total PASS+FAIL+XFAIL lines a complete run prints. A script error inside a
 # check function aborts that coroutine silently, so a short count is a failure.
-const EXPECTED_CHECKS: int = 137
+const EXPECTED_CHECKS: int = 138
 
 # Kitchen geometry (see scenes/kitchen.tscn). Y values are body centres that
 # rest just above the surface they sit on.
@@ -1032,8 +1032,14 @@ func _check_plating() -> void:
 	var held: int = await _wait_until(func() -> bool: return _grab.is_holding(), 5)
 	_check("plating.aim_grabs_plate", held >= 0 and _grab.held_body_name() == plate.name,
 		"held=%s expected=%s" % [_grab.held_body_name(), plate.name])
-	_check("plating.rides_in_hand", egg.is_plated() and _horizontal_distance(egg, plate) < 0.2,
-		"plated=%s dist=%.2f" % [egg.is_plated(), _horizontal_distance(egg, plate)])
+	# Tight: the egg is placed after the physics step (Plate._integrate_forces),
+	# so it must not trail the pulled plate by even one tick.
+	print("INFO plating.rides_in_hand: egg %.3f m from the plate axis while carried" % _horizontal_distance(egg, plate))
+	_check("plating.rides_in_hand", egg.is_plated() and _horizontal_distance(egg, plate) < 0.05,
+		"plated=%s dist=%.3f" % [egg.is_plated(), _horizontal_distance(egg, plate)])
+	await _step(10)
+	_check("plating.stays_in_container", _grab.is_holding() and plate.get_contents().has(egg),
+		"holding=%s contents=%s dist=%.3f" % [_grab.is_holding(), plate.container.contents_text(), _horizontal_distance(egg, plate)])
 	_press_action("interact")
 	await _step(5)
 	# Bin the plate: the egg goes with it and both stations refill.

@@ -7,7 +7,7 @@ const SETTLE_TICKS: int = 5
 const SETTLE_SPEED: float = 1.0
 
 var _foods: Array[FoodItem] = []
-var _settle: Dictionary = {}  # FoodItem -> consecutive settled ticks
+var _settle: Dictionary[FoodItem, int] = {}  # consecutive settled ticks
 
 
 func _ready() -> void:
@@ -43,6 +43,7 @@ func _release_all() -> void:
 		if is_instance_valid(food):
 			food.containers = maxi(0, food.containers - 1)
 	_foods.clear()
+	_settle.clear()
 
 
 func get_contents() -> Array[FoodItem]:

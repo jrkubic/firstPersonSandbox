@@ -62,6 +62,15 @@ func _physics_process(_delta: float) -> void:
 	if not is_instance_valid(_plate) or _plate.is_queued_for_deletion():
 		_detach()
 		return
+	follow_plate()
+
+
+## Authority only. Places this food at its recorded offset in the plate's
+## frame. Called from Plate._integrate_forces after each physics step (so
+## the food rides the plate's current transform) and from _physics_process.
+func follow_plate() -> void:
+	if not is_instance_valid(_plate):
+		return
 	global_transform = _plate.global_transform * _plate_offset
 
 
@@ -91,6 +100,10 @@ func _detach() -> void:
 		remove_collision_exception_with(_plate)
 	_plate = null
 	plated_on = NodePath()
+	# Jolt gives a transform-moved kinematic body a velocity of displacement
+	# per tick; drop it before the body goes dynamic again.
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
 	freeze = false
 
 
